@@ -11,16 +11,13 @@ Postgres is installed, that a database and the relevant roles have been set up, 
 following GitHub repository have been applied: https://github.com/JSheare/tgf_database.
 
 After installation, it's also recommended that the following commands be executed before starting the application:
+- This command will make the user config file and help in filling it out:
 
-    tgfserver --setup
+        tgfserver --setup
 
-- This command will make the user config file and help in filling it out.
+- And this command will validate the config file and report any issues. Run it after filling the file out:
 
-
-    tgfserver --test_config
-
-- Run this command after filling out the config file. It will validate the file and report any issues found.
-
+        tgfserver --test_config
 
 For a full list of application commands, use the help flag:
 
