@@ -36,6 +36,8 @@ def update_instrument_password(config: configparser.ConfigParser) -> None:
                 """, (instrument, password_hash))
                 print(f'Successfully updated password for instrument {instrument}.')
 
+    except configparser.NoOptionError:
+        print('Error: config file is missing necessary options. Use the --test_config flag for details.')
     except psycopg.Error as ex:
         print(f'Error: encountered a database exception: {ex}.')
 
