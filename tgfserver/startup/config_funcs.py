@@ -8,7 +8,7 @@ from tgfserver.helpers.helper_funcs import expand_path
 
 def get_config_template() -> configparser.ConfigParser:
     """A helper function that returns the application's config file template as a ConfigParser instance."""
-    template_file = f'{pathlib.Path(__file__).parent.parent}/config/{params.config_file}'
+    template_file = f'{pathlib.Path(__file__).parent.parent}/config/{params.CONFIG_FILE}'
     template_config = configparser.ConfigParser()
     template_config.read(template_file)
     return template_config
@@ -30,7 +30,7 @@ def read_config(update_user_config: bool = True) -> configparser.ConfigParser:
     """
 
     # Reading the user config file, or making one if it doesn't exist
-    user_file = f'{expand_path(params.user_config_path)}/{params.config_file}'
+    user_file = f'{expand_path(params.USER_CONFIG_PATH)}/{params.CONFIG_FILE}'
     if not pathlib.Path(user_file).is_file():
         template_config = get_config_template()
         with open(user_file, 'w') as user_file:
@@ -101,6 +101,6 @@ def write_config(config: configparser.ConfigParser) -> None:
 
     """
 
-    user_file = f'{expand_path(params.user_config_path)}/{params.config_file}'
+    user_file = f'{expand_path(params.USER_CONFIG_PATH)}/{params.CONFIG_FILE}'
     with open(user_file, 'w') as user_file:
         config.write(user_file)

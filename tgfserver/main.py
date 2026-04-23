@@ -22,7 +22,7 @@ from tgfserver.startup.startup_funcs import default_startup
 def running_pid() -> int:
     """A function that returns the pid of the tgfserver application, or -1 if it isn't currently running."""
     try:
-        with open(f'{expand_path(params.runtime_path, make_dir=False)}/{params.pid_file}', 'r') as file:
+        with open(f'{expand_path(params.RUNTIME_PATH, make_dir=False)}/{params.PID_FILE}', 'r') as file:
             # Checking to see if the pid in the file is still active
             pid = int(file.readline())
             if psutil.pid_exists(pid):

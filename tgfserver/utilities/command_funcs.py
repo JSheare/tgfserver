@@ -12,7 +12,7 @@ from tgfserver.startup.config_funcs import read_config
 
 def report_check_ins() -> None:
     """A function that reports the most recent instrument dispatcher check ins for each instrument."""
-    config = v.ManagerModel(**dict(read_config().items(params.manager_name)))
+    config = v.ManagerModel(**dict(read_config().items(params.MANAGER_NAME)))
     try:
         with psycopg.connect(f'host={config.db_host} '
                              f'port={config.db_port} '
@@ -69,5 +69,5 @@ def validate_config() -> None:
     """A function that validates the user config file."""
     print('Validating config file:')
     config = read_config()
-    validate_service_config(config, params.manager_name, v.ManagerModel)
-    validate_service_config(config, params.dispatcher_name, v.DispatcherModel)
+    validate_service_config(config, params.MANAGER_NAME, v.ManagerModel)
+    validate_service_config(config, params.DISPATCHER_NAME, v.DispatcherModel)

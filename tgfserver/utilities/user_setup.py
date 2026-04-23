@@ -15,12 +15,12 @@ def update_instrument_password(config: configparser.ConfigParser) -> None:
     """A function that updates the stored password for an instrument."""
     instrument = input('Enter the name of the instrument: ').upper()
     try:
-        with psycopg.connect(f'host={config[params.manager_name]["db_host"]} '
-                             f'port={config[params.manager_name]["db_port"]} '
-                             f'connect_timeout={config[params.manager_name]["db_connect_timeout_sec"]} '
-                             f'dbname={config[params.manager_name]["db_name"]} '
-                             f'user={config[params.manager_name]["db_user"]} '
-                             f'password={config[params.manager_name]["db_password"]}',
+        with psycopg.connect(f'host={config[params.MANAGER_NAME]["db_host"]} '
+                             f'port={config[params.MANAGER_NAME]["db_port"]} '
+                             f'connect_timeout={config[params.MANAGER_NAME]["db_connect_timeout_sec"]} '
+                             f'dbname={config[params.MANAGER_NAME]["db_name"]} '
+                             f'user={config[params.MANAGER_NAME]["db_user"]} '
+                             f'password={config[params.MANAGER_NAME]["db_password"]}',
                              autocommit=True) as conn:
             with conn.cursor() as cur:
                 cur.execute("""SELECT tgfserver.get_instrument_id(%s)""", (instrument,))
@@ -58,18 +58,18 @@ def get_gmail_token(config: configparser.ConfigParser) -> None:
         return
 
     # Checking for the client secret file
-    client_secret_file = f'{expand_path(params.user_config_path)}/client_secret.json'
+    client_secret_file = f'{expand_path(params.USER_CONFIG_PATH)}/client_secret.json'
     if not pathlib.Path(client_secret_file).exists():
         print('Error: no client secret file found.')
         return
 
     # Getting the API credentials
-    flow = InstalledAppFlow.from_client_secrets_file(client_secret_file, params.gmail_scopes)
+    flow = InstalledAppFlow.from_client_secrets_file(client_secret_file, params.GMAIL_SCOPES)
     creds = flow.run_local_server(port=0)
 
     # Updating the config file
-    config.set(params.dispatcher_name, 'gmail_address', gmail_address)
-    config.set(params.dispatcher_name, 'gmail_api_credentials', creds.to_json())
+    config.set(params.DISPATCHER_NAME, 'gmail_address', gmail_address)
+    config.set(params.DISPATCHER_NAME, 'gmail_api_credentials', creds.to_json())
     write_config(config)
 
     print('Successfully wrote Gmail address and API credentials to the config file.')

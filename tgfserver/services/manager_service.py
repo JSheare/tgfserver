@@ -42,7 +42,7 @@ class ManagerService(ServiceBase):
 
     """
 
-    service_name = params.manager_name
+    service_name = params.MANAGER_NAME
     _config_model = ManagerModel
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -69,15 +69,15 @@ class ManagerService(ServiceBase):
     async def _pid_file() ->AsyncGenerator[None, Any]:
         """A function responsible for creating and deleting the application's pid file."""
         # Making the file
-        runtime_path = expand_path(params.runtime_path)
-        with open(f'{runtime_path}/{params.pid_file}', 'w') as file:
+        runtime_path = expand_path(params.RUNTIME_PATH)
+        with open(f'{runtime_path}/{params.PID_FILE}', 'w') as file:
             file.write(str(os.getpid()))
 
         yield
 
         # Deleting the file
         try:
-            os.remove(f'{runtime_path}/{params.pid_file}')
+            os.remove(f'{runtime_path}/{params.PID_FILE}')
         except Exception:
             pass
 
@@ -359,7 +359,7 @@ class ManagerService(ServiceBase):
                         {'Data Root': 'data_root', 'List Mode Formats': 'format_name'},
                         sv.GeneralModel,
                         {   'data_root': sql.SQL('CALL tgfserver.insert_into_general(%s);'),
-                            'format_name': sql.SQL('CALL tgfserver.insert_into_lm_formats(%s);'),}))
+                            'format_name': sql.SQL('CALL tgfserver.insert_into_lm_formats(%s);')}))
 
                     # Attempting to get, parse, and update from the other sheets
                     # Note that, because some of the database tables depend on one another, the execution order of these

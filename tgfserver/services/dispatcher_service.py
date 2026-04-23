@@ -160,7 +160,7 @@ class TransferScheduler:
     @staticmethod
     def _read_waitlist() -> Dict[str, ClientInfo]:
         """Returns the waitlist from a JSON file."""
-        file = f'{expand_path(params.data_path, make_dir=False)}/waitlist.json'
+        file = f'{expand_path(params.DATA_PATH, make_dir=False)}/waitlist.json'
         if pathlib.Path(file).exists():
             waitlist = read_json_file(file)
             # Converting the raw waitlist file dicts back into ClientInfo objects
@@ -174,7 +174,7 @@ class TransferScheduler:
     @staticmethod
     def _read_schedule() -> Dict[str, List[datetime.datetime]]:
         """Returns the schedule from a JSON file."""
-        file = f'{expand_path(params.data_path, make_dir=False)}/schedule.json'
+        file = f'{expand_path(params.DATA_PATH, make_dir=False)}/schedule.json'
         if pathlib.Path(file).exists():
             schedule = read_json_file(file)
             # Converting the ISO-formatted start and end date strings back into datetime objects
@@ -195,7 +195,7 @@ class TransferScheduler:
             # isn't redundantly rewritten. This works based on the assumption that asyncio.Lock is fair (FIFO), which
             # is guaranteed by the docs as of writing
             if self._waitlist_writes_pending == 0:
-                file = f'{expand_path(params.data_path)}/waitlist.json'
+                file = f'{expand_path(params.DATA_PATH)}/waitlist.json'
                 raw_waitlist = dict()
                 for client in self._waitlist:
                     raw_waitlist[client] = self._waitlist[client].to_json_dict()
@@ -206,7 +206,7 @@ class TransferScheduler:
     async def _write_schedule(self) -> None:
         """Writes the schedule to a JSON file."""
         raw_schedule = dict()
-        file = f'{expand_path(params.data_path)}/schedule.json'
+        file = f'{expand_path(params.DATA_PATH)}/schedule.json'
         for client in self._schedule:
             raw_schedule[client] = [self._schedule[client][0].isoformat(), self._schedule[client][1].isoformat()]
 
@@ -605,7 +605,7 @@ class DispatcherService(ServiceBase):
 
     """
 
-    service_name = params.dispatcher_name
+    service_name = params.DISPATCHER_NAME
     _config_model = DispatcherModel
 
     def __init__(self, *args, **kwargs):
@@ -789,7 +789,7 @@ class DispatcherService(ServiceBase):
 
         # Getting Gmail API credentials and refreshing them if necessary
         try:
-            creds = Credentials.from_authorized_user_info(self._config.gmail_api_credentials, params.gmail_scopes)
+            creds = Credentials.from_authorized_user_info(self._config.gmail_api_credentials, params.GMAIL_SCOPES)
         except Exception:
             self._logger.exception('Check in digest: encountered an exception when getting Gmail API credentials:')
             return

@@ -37,8 +37,8 @@ def configure_logging(service_name: str, log_level: int) -> logging.handlers.Que
     root_logger.addHandler(handler)
     # Writes log entries in a different thread, to prevent filesystem I/O lag from blocking the event loop
     log_listener = logging.handlers.QueueListener(log_queue, logging.handlers.RotatingFileHandler(
-        filename=f'{expand_path(params.log_path)}/{service_name}.txt',
+        filename=f'{expand_path(params.LOG_PATH)}/{service_name}.txt',
         encoding='utf-8',
-        maxBytes=params.max_log_size_bytes,
-        backupCount=params.max_log_rollovers))
+        maxBytes=params.MAX_LOG_SIZE_BYTES,
+        backupCount=params.MAX_LOG_ROLLOVERS))
     return log_listener
