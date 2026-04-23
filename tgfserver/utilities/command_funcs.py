@@ -46,7 +46,7 @@ def validate_service_config(config: configparser.ConfigParser, service_name: str
     """A helper function that validates the config file section for the specified service."""
     try:
         config_model(**dict(config.items(service_name)))
-        print(f"Entries for service '{service_name}' validated successfully.")
+        print(f"Options for service '{service_name}' validated successfully.")
     except pydantic.ValidationError as ex:
         print(f"Encountered error(s) when validating config file for service '{service_name}':")
         missing_fields = 0

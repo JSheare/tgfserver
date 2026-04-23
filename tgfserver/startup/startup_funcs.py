@@ -21,18 +21,9 @@ def default_startup(service: Type[ServiceBase], *args: Any, **kwargs: Any) -> No
     warnings.filterwarnings('always')
     try:
         service_instance = service(*args, **kwargs)
-    except pydantic.ValidationError as ex:
-        print(f"Encountered error(s) when validating config file for service '{service.service_name}':")
-        missing_fields = 0
-        for error in ex.errors():
-            if error['type'] == '':
-                missing_fields += 1
-            else:
-                print(f"Invalid input '{error['input']}'. {error['msg']}")
-
-        if missing_fields > 0:
-            print(f'{missing_fields} missing fields.')
-
+    except pydantic.ValidationError:
+        print(f"Encountered error(s) when validating config file for service '{service.service_name}'. Use the "
+              f"--test_config flag for details.")
         return
     except configparser.NoSectionError:
         print(f"Encountered error when parsing config file: no section for service '{service.service_name}'.")

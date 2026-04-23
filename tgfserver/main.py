@@ -109,9 +109,9 @@ def main() -> None:
     has_args = False
     commands = []
     parser = argparse.ArgumentParser(prog='tgfserver',
-                                     description='A backend application for the operations of the UCSC TGF group')
+                                     description='A linux backend application for the operations of the UCSC TGF group')
     parser.add_argument('--setup', help='run the tgfserver user setup', action='store_true')
-    parser.add_argument('--test_config', help='test that the user config file contains valid entries',
+    parser.add_argument('--test_config', help='test that the config file contains valid options',
                         action='store_true')
     parser.add_argument('--status', help='display the current status of the tgfserver application', action='store_true')
     parser.add_argument('--instruments', help='report the most recent check in info for each instrument',
