@@ -15,7 +15,7 @@ def is_valid_directory_path(value: str) -> str:
     return value
 
 
-def is_valid_instrument(value: str) -> str:
+def is_valid_instrument_name(value: str) -> str:
     if not value.isalnum():
         raise ValueError('input should consist of only letters and numbers.')
 
@@ -42,5 +42,5 @@ class GeneralModel(pydantic.BaseModel):
 
 class InstrumentsModel(pydantic.BaseModel):
     """A model for validating rows coming from the Instruments sheet."""
-    instrument_name : Annotated[str, pydantic.AfterValidator(is_valid_instrument)]
+    instrument_name : Annotated[str, pydantic.AfterValidator(is_valid_instrument_name)]
     subdir : Annotated[str, pydantic.AfterValidator(is_valid_subdirectory_path)]

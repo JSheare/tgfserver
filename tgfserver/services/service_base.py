@@ -8,7 +8,7 @@ import signal
 from abc import ABC
 from abc import abstractmethod
 from cron_converter import Cron
-from typing import Any, Callable
+from typing import Any, Callable, Set
 
 from tgfserver.startup.config_funcs import read_config
 from tgfserver.startup.configure_logging import configure_logging
@@ -77,6 +77,11 @@ class ServiceBase(ABC):
 
         logging.getLogger('asyncio').setLevel(self._config.log_level)
 
+    async def _reload_callback(self, diff: Set[str]) -> None:
+        """A function that is called after a service reload. Used to implement custom post-reload behavior via
+        overriding in subclasses."""
+        pass
+
     async def reload(self) -> None:
         """A function that initiates a service reload when called."""
         self._logger.info('Reloading service.')
@@ -88,8 +93,21 @@ class ServiceBase(ABC):
             self._logger.error('Failed to reload service. Config validation failed.')
             return
 
-        if new_config.log_level != self._config.log_level:
-            self._config.log_level = new_config.log_level
+        # Noting where the config differences are
+        diff = set()
+        for field, value in new_config:
+            if hasattr(self._config, field):
+                if getattr(self._config, field) != value:
+                    diff.add(field)
+
+            else:
+                self._logger.error('Failed to reload service. Updated config contains unknown options.')
+                return
+
+        self._config = new_config
+
+        # Changing the log level if necessary
+        if 'log_level' in diff:
             # Changing the log level on the root logger
             logging.getLogger().setLevel(self._config.log_level)
 
@@ -101,6 +119,8 @@ class ServiceBase(ABC):
 
             self._logger.info(f'Changed service log level to {logging.getLevelName(self._config.log_level)}.')
 
+        # Running the reload callback
+        await self._reload_callback(diff)
 
     def shutdown(self) -> None:
         """A function that initiates service shutdown when called."""

@@ -10,7 +10,7 @@ import psycopg.sql as sql
 import pydantic
 import signal
 import weakref
-from typing import Any, AsyncGenerator, Callable, Dict, Type
+from typing import Any, AsyncGenerator, Callable, Dict, Set, Type
 
 import tgfserver.config.parameters as params
 import tgfserver.validation.sheets_validation as sv
@@ -64,6 +64,11 @@ class ManagerService(ServiceBase):
         super()._configure_module_loggers()
         logging.getLogger('aiohttp.client').setLevel(self._config.log_level)
         logging.getLogger('psycopg').setLevel(self._config.log_level)
+
+    async def _reload_callback(self, diff: Set[str]) -> None:
+        restart_required = {'db_update_time'}
+        if len(diff.intersection(restart_required)) > 0:
+            self._logger.warning('Service restart required for some updated config options to take effect.')
 
     @staticmethod
     async def _pid_file() ->AsyncGenerator[None, Any]:

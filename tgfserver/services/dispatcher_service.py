@@ -23,7 +23,7 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from types import SimpleNamespace
-from typing import Any, AsyncGenerator, Dict, List, Tuple
+from typing import Any, AsyncGenerator, Dict, List, Set, Tuple
 
 import tgfserver.config.parameters as params
 import tgfserver.validation.dispatcher_validation as dv
@@ -547,7 +547,7 @@ class DispatcherSession:
                         {'reason': 'too many bytes to fit transfer within normal window'},
                         False)
             else:
-                return IDStatusCode.NO_TIME_AVAILABLE, {'reason': 'no time available for scheduling.'}, False
+                return IDStatusCode.NO_TIME_AVAILABLE, {'reason': 'no time available for scheduling'}, False
 
         else:
             self._logger.info(f'Successful transfer waitlist registration for {self._session.instrument} from '
@@ -642,6 +642,13 @@ class DispatcherService(ServiceBase):
         logging.getLogger('aiohttp.websocket').setLevel(self._config.log_level)
         logging.getLogger('psycopg').setLevel(self._config.log_level)
         logging.getLogger('psycopg.pool').setLevel(self._config.log_level)
+
+    async def _reload_callback(self, diff: Set[str]) -> None:
+        restart_required = {'service_host', 'service_port', 'db_pool_size', 'db_host', 'db_port',
+                            'db_connect_timeout_sec', 'db_name', 'db_user', 'db_password', 'start_day', 'end_day',
+                            'scheduling_deadline', 'digest_time'}
+        if len(diff.intersection(restart_required)) > 0:
+            self._logger.warning('Service restart required for some updated config options to take effect.')
 
     def _pool_reconnect_failed_callback(self, pool: psycopg_pool.AsyncConnectionPool) -> None:
         """A callback which is called if the database connection pool can't reacquire connections."""
