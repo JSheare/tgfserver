@@ -21,10 +21,10 @@ class CheckInModel(pydantic.BaseModel):
     """A model for validating message payloads during a check in operation."""
     storage_frac: pydantic.PositiveFloat
     gps: bool
-    measured_rates: Annotated[List[pydantic.PositiveFloat], Len(max_length=20)]
-    timestamps: Annotated[List[datetime.datetime], Len(max_length=20)]
 
 
 class NegotiationModel(pydantic.BaseModel):
     """A model for validating message payloads during a file transfer negotiation operation."""
+    measured_rates: Annotated[List[pydantic.PositiveFloat], Len(max_length=20)]
+    timestamps: Annotated[List[datetime.datetime], Len(max_length=20)]
     total_bytes: pydantic.PositiveInt

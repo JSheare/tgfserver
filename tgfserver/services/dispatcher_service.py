@@ -516,25 +516,21 @@ class DispatcherSession:
                 CALL tgfserver.update_instrument_check_in(%s, %s, %s)
                 """, (self._session.instrument, payload.storage_frac, payload.gps))
 
-        # Also getting the transfer rate and last transfer date for the file transfer negotiation later
-        self._session.transfer_rate = self._scheduler.get_rate(payload.measured_rates, payload.timestamps)
-        if len(payload.timestamps) > 0:
-            self._session.last_transfer = max(payload.timestamps)
-        else:
-            self._session.last_transfer = datetime.datetime.fromtimestamp(0, datetime.UTC)
-
-        self._session.checked_in = True
         self._logger.info(f'Successful check in for {self._session.instrument} from {self._client_addr}.')
         return IDStatusCode.OK, {}, False
 
     async def _negotiate(self, raw_payload: Dict[str, Any]) -> Tuple[int, Dict[str, Any], bool]:
         """A function implementing the file transfer negotiation operation."""
-        # Checking that the client checked in
-        if not hasattr(self._session, 'checked_in') and self._session.checked_in:
-            return IDStatusCode.INVALID_OPERATION, {'reason': 'client never checked in'}, True
-
         # Decoding and validating the payload
         payload = dv.NegotiationModel(**raw_payload)
+
+        # Getting the transfer rate and the last transfer date if we haven't already
+        if not hasattr(self._session, 'transfer_rate'):
+            self._session.transfer_rate = self._scheduler.get_rate(payload.measured_rates, payload.timestamps)
+            if len(payload.timestamps) > 0:
+                self._session.last_transfer = max(payload.timestamps)
+            else:
+                self._session.last_transfer = datetime.datetime.fromtimestamp(0, datetime.UTC)
 
         # Attempting to register on the waitlist
         success, reason = await (self._scheduler.register(self._session.instrument, payload.total_bytes,
