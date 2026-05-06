@@ -45,13 +45,11 @@ class ClientInfo:
     @classmethod
     def from_json_dict(cls, json_dict: Dict[str, str | int | float]) -> ClientInfo:
         """Converts a JSON-serializable dictionary back into a ClientInfo instance."""
-
         return cls(json_dict['name'], datetime.datetime.fromisoformat(json_dict['target_date']),
                    json_dict['days_since_transfer'], json_dict['transfer_rate'], json_dict['slot_size'])
 
     def to_json_dict(self) -> Dict[str, str | int | float]:
         """Returns the ClientInfo instance as a JSON-serializable dictionary."""
-
         json_dict = self.__dict__.copy()
         json_dict['target_date'] = json_dict['target_date'].isoformat()
         return json_dict
