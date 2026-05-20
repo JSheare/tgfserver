@@ -84,7 +84,7 @@ def user_setup() -> None:
         config = read_config()
 
         operations = [(update_instrument_password, 'update instrument password'),
-                      (get_gmail_token, 'Get Gmail API token')]
+                      (get_gmail_token, 'get Gmail API token')]
         while True:
             print("Please choose one of the following setup options or enter 'q' to quit:")
             for i in range(len(operations)):

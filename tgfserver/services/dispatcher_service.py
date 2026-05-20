@@ -30,6 +30,7 @@ import tgfserver.validation.dispatcher_validation as dv
 from tgfserver.startup.config_funcs import read_config, write_config
 from tgfserver.validation.config_validation import DispatcherModel
 from tgfserver.helpers.helper_funcs import expand_path, read_json_file, write_json_file
+from tgfserver.helpers.lockout_cache import LockoutCache
 from tgfserver.services.service_base import ServiceBase
 
 
@@ -394,11 +395,13 @@ class DispatcherSession:
 
     """
 
-    def __init__(self, config: DispatcherModel, logger: logging.Logger, pool: psycopg_pool.AsyncConnectionPool,
-                 ph: argon2.PasswordHasher, scheduler: TransferScheduler, client_addr: str) -> None:
+    def __init__(self, config: DispatcherModel, logger: logging.Logger, ip_cache: LockoutCache,
+                 pool: psycopg_pool.AsyncConnectionPool, ph: argon2.PasswordHasher, scheduler: TransferScheduler,
+                 client_addr: str) -> None:
         # Resources used during the session
         self._config = config
         self._logger = logger
+        self._ip_cache = ip_cache
         self._pool = pool
         self._ph = ph
         self._scheduler = scheduler
@@ -466,6 +469,11 @@ class DispatcherSession:
         # Validating the payload
         payload = dv.AuthenticationModel(**raw_payload)
 
+        # Checking that the client's ip isn't locked out
+        if self._ip_cache.is_locked_out(self._client_addr):
+            self._logger.info(f'Refusing authentication request from {self._client_addr} due to temporary lockout.')
+            return IDStatusCode.UNAUTHORIZED, {'reason': 'too many attempts'}, True
+
         # Retrieving the client's hashed password from the database
         self._session.instrument = payload.instrument
         async with self._pool.connection() as conn:
@@ -479,15 +487,19 @@ class DispatcherSession:
         self._session.authenticated = False
         if password_hash is None:
             self._logger.info(f'Invalid instrument name from {self._client_addr}.')
-            return IDStatusCode.UNAUTHORIZED, {'reason': 'instrument not found'}, True
         else:
             try:
                 await asyncio.to_thread(self._ph.verify, password_hash, payload.password)
+                self._session.authenticated = True
             except argon2.exceptions.VerifyMismatchError:
                 self._logger.info(f'Incorrect password from {self._client_addr}.')
-                return IDStatusCode.UNAUTHORIZED, {'reason': 'password incorrect'}, True
 
-        self._session.authenticated = True
+        # Rejecting the client if authentication was unsuccessful
+        if not self._session.authenticated:
+            self._ip_cache.increment_attempts(self._client_addr)
+            return IDStatusCode.UNAUTHORIZED, {'reason': 'invalid instrument or password'}, True
+
+        self._ip_cache.reset_attempts(self._client_addr)
         self._logger.info(f'Successful login as {self._session.instrument} from {self._client_addr}.')
 
         # Updating the password hash if it needs rehashing
@@ -592,6 +604,9 @@ class DispatcherService(ServiceBase):
         A database connection pool for use in the service's various functions.
     _websockets : weakref.WeakSet
         A weak reference set that keeps track of all currently-open websocket connections.
+    _ip_cache : LockoutCache
+        A cache that keeps track of authorization attempts for client ip addresses and locks them out after too many
+        attempts.
     _ph : argon2.PasswordHasher
         A password hasher used to verify and rehash client passwords
     _scheduler : tgfserver.helpers.transfer_scheduler.TransferScheduler
@@ -619,6 +634,8 @@ class DispatcherService(ServiceBase):
             reconnect_failed=self._pool_reconnect_failed_callback,
             open=False)
         self._websockets = weakref.WeakSet()
+        self._ip_cache = LockoutCache(self._config.ip_cache_size_bytes, self._config.ip_period_sec,
+                                      self._config.max_auth_attempts)
         self._ph = argon2.PasswordHasher()
         self._scheduler = TransferScheduler(self._config)
 
@@ -664,7 +681,8 @@ class DispatcherService(ServiceBase):
                                            max_msg_size=self._config.max_msg_size_bytes)
         await ws.prepare(request)
         self._websockets.add(ws)
-        session = DispatcherSession(self._config, self._logger, self._pool, self._ph, self._scheduler, request.remote)
+        session = DispatcherSession(self._config, self._logger, self._ip_cache, self._pool, self._ph, self._scheduler,
+                                    request.remote)
         try:
             async for msg in ws:
                 if msg.type == aiohttp.WSMsgType.TEXT:

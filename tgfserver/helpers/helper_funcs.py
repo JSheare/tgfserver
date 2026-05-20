@@ -2,6 +2,8 @@
 import json
 import os
 import pathlib
+import sys
+from collections import deque
 from typing import Any, Dict
 
 
@@ -27,6 +29,53 @@ def expand_path(path: str, make_dir: bool = True) -> pathlib.Path:
         expanded_path.mkdir(parents=True)
 
     return expanded_path
+
+
+def get_obj_size(obj: Any) -> int:
+    """A function that returns the recursive size of the passed object in bytes.
+
+    Note: objects that aren't pure Python might not yield accurate measurements (so pass things like numpy arrays and
+    pandas dataframes, which have components written in other languages, at your own risk).
+
+    Parameters
+    ----------
+    obj : Any
+        The object to get the size of.
+
+    Returns
+    -------
+    int
+        The size of the passed object in bytes.
+
+    """
+
+    size = 0
+    visited = set()
+    stack = deque()
+    stack.append(obj)
+    while len(stack) > 0:
+        item = stack.pop()
+        item_id = id(item)
+        if item_id in visited:
+            continue
+
+        size += sys.getsizeof(item)
+        visited.add(item_id)
+        if isinstance(item, dict):
+            for key in item.keys():
+                stack.append(key)
+
+            for value in item.values():
+                stack.append(value)
+
+        elif hasattr(item, '__dict__'):
+            # Iterating through all the object's members
+            stack.append(item.__dict__)
+        elif hasattr(item, '__iter__') and not isinstance(item, (str, bytes, bytearray)):
+            for subitem in item:
+                stack.append(subitem)
+
+    return size
 
 
 def read_json_file(file: str) -> Dict[Any, Any]:

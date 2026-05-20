@@ -57,6 +57,11 @@ The user config file can be found at ~/.config/tgfserver/tgfserver.ini
 - receive_timeout_sec: the amount of time (in seconds) that the dispatcher service will wait for a websocket message
   before closing the connection.
 - max_msg_size_bytes: the maximum size of a websocket message (in bytes).
+- ip_cache_size_bytes: the maximum size of the cache used to keep track of authentication requests from specific ip
+  addresses (in bytes).
+- ip_period_sec: the length of the authorization attempt window/lockout time (in seconds).
+- max_auth_attempts: the maximum number of authorization attempts that can be made by a specific ip address within
+  ip_period_sec seconds before the ip address is locked out for ip_period_sec seconds.
 - db_pool_size: the number of connections in the dispatcher's database connection pool.
 - db_host: the IPv4 address of the database.
 - db_port: the port used by the database.

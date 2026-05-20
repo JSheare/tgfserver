@@ -87,6 +87,9 @@ class DispatcherModel(pydantic.BaseModel):
     service_port: Annotated[int, pydantic.AfterValidator(is_valid_port)]
     receive_timeout_sec: pydantic.PositiveFloat
     max_msg_size_bytes: pydantic.PositiveInt
+    ip_cache_size_bytes: pydantic.PositiveInt
+    ip_period_sec: pydantic.PositiveInt
+    max_auth_attempts: pydantic.PositiveInt
     db_pool_size: pydantic.PositiveInt
     db_host: Annotated[str, pydantic.AfterValidator(is_valid_ipv4)]
     db_port: Annotated[int, pydantic.AfterValidator(is_valid_port)]
