@@ -32,7 +32,7 @@ def expand_path(path: str, make_dir: bool = True) -> pathlib.Path:
 
 
 def get_obj_size(obj: Any) -> int:
-    """A function that returns the recursive size of the passed object in bytes.
+    """A function that returns the size of the passed object (including subobjects) in bytes.
 
     Note: objects that aren't pure Python might not yield accurate measurements (so pass things like numpy arrays and
     pandas dataframes, which have components written in other languages, at your own risk).

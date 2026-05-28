@@ -10,15 +10,15 @@ class LockoutCache:
     Parameters
     ----------
     mem_lim : int
-        The maximum amount of memory to be used by cache entries.
+        The total memory to be used by cache entries.
     period_sec : int
         The window for attempts in seconds, and the time in seconds that a lockout lasts for.
     max_attempts : int
-        The maximum number of attempts that key can make before being locked out.
+        The maximum number of attempts that a key can make before being locked out.
 
     Attributes
     ----------
-    _cache : TTLCache
+    _cache : cachetools.TTLCache
         The cachetools TTLCache used to store the number of attempts per key for the specified window.
 
     """

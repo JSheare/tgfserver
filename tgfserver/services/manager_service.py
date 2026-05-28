@@ -297,7 +297,7 @@ class ManagerService(ServiceBase):
                         if j != num_errors - 1:
                             issues_strings.append('\n')
 
-                    self._logger.warning(f"Database update: failed to validate value on row {i} of sheet "
+                    self._logger.warning(f"Database update: failed to validate value(s) on row {i} of sheet "
                                          f"'{sheet_name}'. Issues: \n{''.join(issues_strings)}")
                     continue
 
@@ -378,6 +378,47 @@ class ManagerService(ServiceBase):
                         {'Name': 'instrument_name', 'Data Subdirectory': 'subdir'},
                         sv.InstrumentsModel,
                         sql.SQL("""CALL tgfserver.insert_into_instruments(%(instrument_name)s, %(subdir)s);""")))
+
+                    # Scintillators sheet
+                    output_strings.append(await self._update_from_sheet(
+                        session,
+                        conn,
+                        'Scintillators!A:C',
+                        {   'Scintillator Name': 'scint_name', 'Scintillator Priority': 'scint_priority',
+                            'Plot Color': 'plot_color'},
+                        sv.ScintillatorsModel,
+                        sql.SQL("""CALL tgfserver.insert_into_scintillators(%(scint_name)s, %(scint_priority)s, 
+                                                                            %(plot_color)s);""")))
+
+                    # Configurations sheet
+                    output_strings.append(await self._update_from_sheet(
+                        session,
+                        conn,
+                        'Configurations!A:F',
+                        {   'Instrument': 'instrument_name', 'After Date': 'after_date', 'Scintillator': 'scint_name',
+                            'eRC': 'erc', 'List Mode Format': 'format_name', 'Long Event Search': 'long_event_search'},
+                        sv.ConfigurationsModel,
+                        sql.SQL("""CALL tgfserver.insert_into_configurations(%(instrument_name)s, %(after_date)s, 
+                                                                             %(scint_name)s, %(erc)s, %(format_name)s,
+                                                                             %(long_event_search)s);""")))
+
+                    # Deployments sheet
+                    output_strings.append(await self._update_from_sheet(
+                        session,
+                        conn,
+                        'Deployments!A:K',
+                        {   'Location': 'location', 'Instrument': 'instrument_name', 'Start date': 'start_date',
+                            'End date': 'end_date', 'Timezone': 'tz_identifier',
+                            'Nearest weather station': 'weather_station',
+                            'Nearest sounding station': 'sounding_station',
+                            'Latitude (N)': 'latitude', 'Longitude (E, 0-360)': 'longitude',
+                            'Altitude (km)': 'altitude', 'Notes': 'notes'},
+                        sv.DeploymentsModel,
+                        sql.SQL("""CALL tgfserver.insert_into_deployments(%(instrument_name)s, %(start_date)s, 
+                                                                          %(end_date)s, %(location)s, %(tz_identifier)s,
+                                                                          %(weather_station)s, %(sounding_station)s,
+                                                                          %(latitude)s, %(longitude)s, %(altitude)s,
+                                                                          %(notes)s);""")))
 
             except psycopg.Error as ex:
                 self._logger.exception('Database update: encountered the following database exception:')
