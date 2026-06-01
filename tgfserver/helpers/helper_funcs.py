@@ -2,6 +2,7 @@
 import json
 import os
 import pathlib
+import pickle
 import sys
 from collections import deque
 from typing import Any, Dict
@@ -114,3 +115,38 @@ def write_json_file(dictionary: Dict[Any, Any], file: str) -> None:
 
         with open(file, 'w') as f:
             json.dump(dictionary, f)
+
+
+def read_pickle_file(file: str) -> Any:
+    """A function that reads the given file, unpickles its contents, and returns them.
+
+    Parameters
+    ----------
+    file : str
+        The file to be read.
+
+    Returns
+    -------
+    Any
+        The unpickled object.
+
+    """
+
+    with open(file, 'rb') as f:
+        obj = pickle.load(f)
+
+
+def write_pickle_file(obj: Any, file: str) -> None:
+    """A function that pickles the given object and writes it to the given file.
+
+    Parameters
+    ----------
+    obj : Any
+        The object to be pickled and written to a file.
+    file : str
+        The file where the pickled object will be written.
+
+    """
+
+    with open(file, 'wb') as f:
+        pickle.dump(obj, f)

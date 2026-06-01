@@ -29,7 +29,7 @@ import tgfserver.config.parameters as params
 import tgfserver.validation.dispatcher_validation as dv
 from tgfserver.startup.config_funcs import read_config, write_config
 from tgfserver.validation.config_validation import DispatcherModel
-from tgfserver.helpers.helper_funcs import expand_path, read_json_file, write_json_file
+from tgfserver.helpers.helper_funcs import expand_path, read_pickle_file, write_pickle_file
 from tgfserver.helpers.lockout_cache import LockoutCache
 from tgfserver.services.service_base import ServiceBase
 
@@ -42,18 +42,6 @@ class ClientInfo:
     days_since_transfer: int
     transfer_rate: float
     slot_size: int
-
-    @classmethod
-    def from_json_dict(cls, json_dict: Dict[str, str | int | float]) -> ClientInfo:
-        """Converts a JSON-serializable dictionary back into a ClientInfo instance."""
-        return cls(json_dict['name'], datetime.datetime.fromisoformat(json_dict['target_date']),
-                   json_dict['days_since_transfer'], json_dict['transfer_rate'], json_dict['slot_size'])
-
-    def to_json_dict(self) -> Dict[str, str | int | float]:
-        """Returns the ClientInfo instance as a JSON-serializable dictionary."""
-        json_dict = self.__dict__.copy()
-        json_dict['target_date'] = json_dict['target_date'].isoformat()
-        return json_dict
 
     def __eq__(self, other: ClientInfo) -> bool:
         """Magic method for equality. Returns True if instances are of equal priority."""
@@ -158,35 +146,24 @@ class TransferScheduler:
 
     @staticmethod
     def _read_waitlist() -> Dict[str, ClientInfo]:
-        """Returns the waitlist from a JSON file."""
-        file = f'{expand_path(params.DATA_PATH, make_dir=False)}/waitlist.json'
+        """Returns the waitlist from a pkl file."""
+        file = f'{expand_path(params.DATA_PATH, make_dir=False)}/waitlist.pkl'
         if pathlib.Path(file).exists():
-            waitlist = read_json_file(file)
-            # Converting the raw waitlist file dicts back into ClientInfo objects
-            for client in waitlist:
-                waitlist[client] = ClientInfo.from_json_dict(waitlist[client])
-
-            return waitlist
+            return read_pickle_file(file)
         else:
             return dict()
 
     @staticmethod
     def _read_schedule() -> Dict[str, List[datetime.datetime]]:
-        """Returns the schedule from a JSON file."""
-        file = f'{expand_path(params.DATA_PATH, make_dir=False)}/schedule.json'
+        """Returns the schedule from a pkl file."""
+        file = f'{expand_path(params.DATA_PATH, make_dir=False)}/schedule.pkl'
         if pathlib.Path(file).exists():
-            schedule = read_json_file(file)
-            # Converting the ISO-formatted start and end date strings back into datetime objects
-            for client in schedule:
-                schedule[client][0] = datetime.datetime.fromisoformat(schedule[client][0])
-                schedule[client][1] = datetime.datetime.fromisoformat(schedule[client][1])
-
-            return schedule
+            return read_pickle_file(file)
         else:
             return dict()
 
     async def _write_waitlist(self) -> None:
-        """Writes the waitlist to a JSON file."""
+        """Writes the waitlist to a pkl file."""
         self._waitlist_writes_pending += 1
         async with self._waitlist_lock:
             self._waitlist_writes_pending -= 1
@@ -194,23 +171,15 @@ class TransferScheduler:
             # isn't redundantly rewritten. This works based on the assumption that asyncio.Lock is fair (FIFO), which
             # is guaranteed by the docs as of writing
             if self._waitlist_writes_pending == 0:
-                file = f'{expand_path(params.DATA_PATH)}/waitlist.json'
-                raw_waitlist = dict()
-                for client in self._waitlist:
-                    raw_waitlist[client] = self._waitlist[client].to_json_dict()
-
+                file = f'{expand_path(params.DATA_PATH)}/waitlist.pkl'
                 # Doing the writing in another thread to prevent filesystem I/O lag from blocking the event loop
-                await asyncio.to_thread(write_json_file, raw_waitlist, file)
+                await asyncio.to_thread(write_pickle_file, self._waitlist, file)
 
     async def _write_schedule(self) -> None:
-        """Writes the schedule to a JSON file."""
-        raw_schedule = dict()
-        file = f'{expand_path(params.DATA_PATH)}/schedule.json'
-        for client in self._schedule:
-            raw_schedule[client] = [self._schedule[client][0].isoformat(), self._schedule[client][1].isoformat()]
-
+        """Writes the schedule to a pkl file."""
+        file = f'{expand_path(params.DATA_PATH)}/schedule.pkl'
         # Doing the writing in another thread to prevent filesystem I/O lag from blocking the event loop
-        await asyncio.to_thread(write_json_file, raw_schedule, file)
+        await asyncio.to_thread(write_pickle_file, self._schedule, file)
 
     def get_rate(self, measured_rates: List[float], timestamps: List[datetime.datetime]) -> float:
         """Calculates the client's projected transfer rate based on the passed measurements and their timestamps.
