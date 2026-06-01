@@ -135,6 +135,8 @@ def read_pickle_file(file: str) -> Any:
     with open(file, 'rb') as f:
         obj = pickle.load(f)
 
+    return obj
+
 
 def write_pickle_file(obj: Any, file: str) -> None:
     """A function that pickles the given object and writes it to the given file.
