@@ -646,13 +646,19 @@ class DispatcherService(ServiceBase):
 
     async def _instrument_handler(self, request: web.BaseRequest) -> web.WebSocketResponse:
         """A handler for incoming client websocket connections."""
-        self._logger.info(f'Opening websocket connection from {request.remote}.')
+        forwarded_for = request.headers.get('X-Forwarded-For')
+        if forwarded_for:
+            client_ip = forwarded_for.split(',')[0].strip()
+        else:
+            client_ip = request.headers.get('X-Real-IP', request.remote)
+
+        self._logger.info(f'Opening websocket connection from {client_ip}.')
         ws = aiohttp.web.WebSocketResponse(receive_timeout=self._config.receive_timeout_sec,
                                            max_msg_size=self._config.max_msg_size_bytes)
         await ws.prepare(request)
         self._websockets.add(ws)
         session = DispatcherSession(self._config, self._logger, self._ip_cache, self._pool, self._ph, self._scheduler,
-                                    request.remote)
+                                    client_ip)
         try:
             async for msg in ws:
                 if msg.type == aiohttp.WSMsgType.TEXT:
@@ -665,38 +671,38 @@ class DispatcherService(ServiceBase):
                             break
 
                     except pydantic.ValidationError:
-                        self._logger.info(f'Message from {request.remote} contained improperly formed info.')
+                        self._logger.info(f'Message from {client_ip} contained improperly formed info.')
                         await ws.close(code=aiohttp.WSCloseCode.UNSUPPORTED_DATA,
                                        message=b'Message contained improperly formed info')
                         break
                     except psycopg.Error:
                         self._logger.exception(f'Encountered a database exception during session with '
-                                               f'{request.remote}:')
+                                               f'{client_ip}:')
                         await ws.close(code=aiohttp.WSCloseCode.INTERNAL_ERROR)
                         break
                     except Exception:
-                        self._logger.exception(f'Encountered an exception during session with {request.remote}:')
+                        self._logger.exception(f'Encountered an exception during session with {client_ip}:')
                         await ws. close(code=aiohttp.WSCloseCode.INTERNAL_ERROR)
                         break
 
                 elif msg.type == aiohttp.WSMsgType.ERROR:
-                    self._logger.info(f'Websocket from {request.remote} closed with an exception: {ws.exception()}.')
+                    self._logger.info(f'Websocket from {client_ip} closed with an exception: {ws.exception()}.')
 
         except asyncio.exceptions.TimeoutError:
-            self._logger.info(f'Websocket connection from {request.remote} timed out.')
+            self._logger.info(f'Websocket connection from {client_ip} timed out.')
         except web.HTTPException:
-            self._logger.info(f'Encountered an exception during websocket connection from {request.remote}:',
+            self._logger.info(f'Encountered an exception during websocket connection from {client_ip}:',
                               exc_info=True)
         except ConnectionError:
-            self._logger.info(f'Websocket connection from {request.remote} closed unexpectedly.')
+            self._logger.info(f'Websocket connection from {client_ip} closed unexpectedly.')
         finally:
             self._websockets.discard(ws)
             if not ws.closed:
                 await ws.close()
 
-            self._logger.info(f'Websocket connection from {request.remote} closed.')
+            self._logger.info(f'Websocket connection from {client_ip} closed.')
             if ws.close_code > aiohttp.WSCloseCode.OK:
-                self._logger.info(f'Websocket connection from {request.remote} closed with an unexpected code: '
+                self._logger.info(f'Websocket connection from {client_ip} closed with an unexpected code: '
                                   f'{ws.close_code}.')
 
         return ws
