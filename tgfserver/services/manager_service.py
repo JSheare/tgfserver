@@ -5,17 +5,23 @@ import datetime
 import logging
 import multiprocessing
 import os
+import playwright
 import psycopg
 import psycopg.sql as sql
 import pydantic
 import signal
 import weakref
-from typing import Any, AsyncGenerator, Callable, Dict, Set, Type
+import zoneinfo
+from bs4 import BeautifulSoup
+from playwright.async_api import async_playwright
+from psycopg.rows import dict_row
+from typing import Any, AsyncGenerator, Callable, Dict, List, Set, Type
 
 import tgfserver.config.parameters as params
 import tgfserver.validation.sheets_validation as sv
 from tgfserver.helpers.async_process import AsyncProcess
 from tgfserver.validation.config_validation import ManagerModel
+from tgfserver.validation.weather_validation import WeatherModel
 from tgfserver.helpers.helper_funcs import expand_path
 from tgfserver.helpers.string_tcp import AsyncStringTCP
 from tgfserver.services.dispatcher_service import DispatcherService
@@ -112,7 +118,7 @@ class ManagerService(ServiceBase):
                             if self._update_db_lock.locked():
                                 await protocol.send_message(writer, 'Database update already in progress.')
                             else:
-                                await protocol.send_message(writer, 'Updating database from spreadsheet.')
+                                await protocol.send_message(writer, 'Updating database.')
                                 output = await self._update_db()
                                 await protocol.send_message(writer, output)
 
@@ -337,88 +343,321 @@ class ManagerService(ServiceBase):
             return (f"{successful_rows}/{total_rows} rows from sheet '{sheet_name}' parsed and updated. "
                     f"See log for details.\n")
 
+    @staticmethod
+    def _parse_html_for_table(content: str) -> List[Dict[str, Any]]:
+        """Parses the given HTML for a weather table and returns it as a list of dictionaries: one for each row."""
+        soup = BeautifulSoup(content, 'lxml')
+        table_list = soup.find_all('table')
+        # Historical weather data pages have two tables. We're interested in the second one
+        table = table_list[1]
+
+        # Maps webpage table column names to more programmer-friendly names
+        column_map = {'Time': 'measurement_time', 'Temperature': 'temperature_f', 'Dew Point': 'dew_point_f',
+                      'Humidity': 'humidity_percent', 'Wind': 'wind', 'Wind Speed': 'wind_speed_mph',
+                      'Wind Gust': 'wind_gust_mph', 'Pressure': 'pressure_inches', 'Precip.': 'precipitation_inches',
+                      'Condition': 'condition'}
+
+        data = []
+        headers = [header.text for header in table.find_all('th')]
+        for row in table.find_all('tr'):
+            row_dict = {column_map[headers[i]]: entry.text.strip() for i, entry in enumerate(row.find_all('td'))}
+            if not len(row_dict) == 0:
+                data.append(row_dict)
+
+        return data
+
+    async def _scrape_weather_table(self, page: playwright.async_api.Page, local_date: datetime.datetime,
+                                    weather_station: str) -> List[Dict[str, Any]]:
+        """Scrapes a weather website for weather data from the given weather station on the given local date."""
+        await page.goto(f'https://www.wunderground.com/history/daily/'
+                        f'{weather_station}/date/{local_date.strftime("%Y-%m-%d")}',
+                        wait_until='domcontentloaded')
+        # Waiting for the javascript that fetches the tables to run
+        await page.wait_for_selector('table', timeout=self._config.scrape_timeout_sec * 1000)
+
+        rows = await asyncio.to_thread(self._parse_html_for_table, await page.content())
+        # Validating and coercing the rows and returning them
+        beginning_of_day = local_date.timestamp() - (local_date.hour * 60 ** 2 + local_date.minute * 60 +
+                                                     local_date.second + local_date.microsecond * 1e-6)
+        for i in range(len(rows)):
+            rows[i] = WeatherModel(**rows[i]).model_dump()
+            # Replacing the clock time with a timestamp in UTC
+            rows[i]['measurement_time'] = datetime.datetime.fromtimestamp(
+                beginning_of_day + rows[i]['measurement_time'], datetime.UTC)
+            # Giving the event loop the chance to do other things between rows
+            await asyncio.sleep(0)
+
+        return rows
+
+    async def _update_weather(self, page: playwright.async_api.Page, conn: psycopg.AsyncConnection,
+                              instrument: str) -> str:
+        """A function that scrapes missing weather info for the given instrument and stores it in the database."""
+        self._logger.info(f"Database update: scraping weather for instrument '{instrument}'.")
+        successful_days = 0
+        failed_days = False
+        retrieval_failure = False
+        try:
+            async with conn.cursor() as cur:
+                cur.row_factory = dict_row
+                try:
+                    await cur.execute("""SELECT * FROM tgfserver.get_all_deployments(%s);""", (instrument,))
+                    deployments = await cur.fetchall()
+                except psycopg.Error:
+                    self._logger.exception(f"Database update: encountered a database exception when attempting to get "
+                                           f"deployments list for instrument '{instrument}':")
+                    return (f'Failed to scrape weather for {instrument} due to database exception. '
+                            f'See log for details.\n')
+
+                for deployment in deployments:
+                    self._logger.debug(f"Database update: scraping and storing weather data for instrument "
+                                       f"'{instrument}' deployment from "
+                                       f"{deployment['start_date'].strftime("%Y-%m-%d")} "
+                                       f"to {deployment['end_date'].strftime("%Y-%m-%d")} "
+                                       f"with weather station '{deployment['weather_station']}'.")
+                    # Skipping deployments that haven't started yet
+                    if deployment['start_date'] > datetime.datetime.now(datetime.UTC):
+                        continue
+
+                    # Getting a list of missing weather dates based on what's in the database already
+                    now = datetime.datetime.now(datetime.UTC)
+                    if deployment['end_date'] > now:
+                        end_date = now
+                    else:
+                        end_date = deployment['end_date']
+
+                    try:
+                        await cur.execute("""SELECT * FROM tgfserver.get_missing_weather_dates(%s, %s, %s)""",
+                                          (instrument, deployment['start_date'], end_date))
+                        missing_dates = await cur.fetchall()
+                    except psycopg.Error:
+                        self._logger.exception(f"Database update: encountered a database exception when attempting to "
+                                               f"get missing date list for instrument '{instrument}' deployment:")
+                        failed_days = True
+                        continue
+
+                    if len(missing_dates) == 0:
+                        self._logger.debug(f"Database update: no new weather data to scrape for instrument "
+                                           f"'{instrument}' deployment from "
+                                           f"{deployment['start_date'].strftime("%Y-%m-%d")} "
+                                           f"to {deployment['end_date'].strftime("%Y-%m-%d")} "
+                                           f"with weather station '{deployment['weather_station']}'.")
+
+                    missing_dates = [s['missing_date'] for s in missing_dates]
+                    for missing_date in missing_dates:
+                        self._logger.debug(f"Database update: scraping weather data from "
+                                           f"{missing_date.strftime("%Y-%m-%d")} for instrument '{instrument}'.")
+                        try:
+                            local_date = missing_date.astimezone(zoneinfo.ZoneInfo(deployment['tz_identifier']))
+                            # Checking to see that the day has completely elapsed and skipping it if it hasn't
+                            if (datetime.datetime.now(datetime.UTC) - local_date) < datetime.timedelta(days=1):
+                                continue
+
+                            rows = await self._scrape_weather_table(page, local_date, deployment['weather_station'])
+                            retrieval_failure = False
+                            for row in rows:
+                                row['instrument'] = instrument
+
+                            # Inserting the data inside a transaction so that we always get whole days
+                            async with conn.transaction():
+                                await cur.executemany("""CALL tgfserver.insert_into_weather(%(instrument)s, 
+                                                                                            %(measurement_time)s, 
+                                                                                            %(condition)s);""", rows)
+
+                            successful_days += 1
+                        except playwright.async_api.Error:
+                            self._logger.exception(f"Database update: failed to retrieve weather data "
+                                                   f"(local date: {local_date.strftime("%Y-%m-%d")}; "
+                                                   f"weather station '{deployment['weather_station']}') "
+                                                   f"for instrument '{instrument}' due to an exception:")
+                            failed_days = True
+                            if not retrieval_failure:
+                                retrieval_failure = True
+                            else:
+                                self._logger.warning(f"Database update: encountered multiple weather data retrieval "
+                                                     f"failures in a row. This could indicate a connection issue, or "
+                                                     f"it could indicate that either the weather station or the "
+                                                     f"weather website URL are incorrect. Stopping scraping attempts "
+                                                     f"for this deployment.")
+                                break
+                        except IndexError:
+                            self._logger.error(f"Database update: failed to scrape weather data "
+                                               f"(local date: {local_date.strftime("%Y-%m-%d")}; "
+                                               f"weather station '{deployment['weather_station']}') "
+                                               f"for instrument '{instrument}'. Measurements table missing. "
+                                               f"Stopping scraping attempts for this instrument.")
+                            failed_days = True
+                            raise RuntimeError
+                        except KeyError:
+                            self._logger.error(f"Database update: failed to scrape weather data "
+                                               f"(local date: {local_date.strftime("%Y-%m-%d")}; "
+                                               f"weather station '{deployment['weather_station']}') "
+                                               f"for instrument '{instrument}'. Measurements table contains unexpected "
+                                               f"columns. Stopping scraping attempts for this instrument.")
+                            failed_days = True
+                            raise RuntimeError
+                        except pydantic.ValidationError as ex:
+                            issues_strings = []
+                            num_errors = len(ex.errors())
+                            for j in range(num_errors):
+                                error = ex.errors()[j]
+                                issues_strings.append(f"'{error["input"]}' - {error["msg"]}")
+                                if j != num_errors - 1:
+                                    issues_strings.append('\n')
+
+                            self._logger.error(f"Database update: encountered a validation error when attempting "
+                                                f"to validate scraped weather data "
+                                                f"(local date: {local_date.strftime("%Y-%m-%d")}; "
+                                                f"weather station '{deployment['weather_station']}') "
+                                                f"for instrument '{instrument}'. "
+                                                f"Issues: \n{''.join(issues_strings)}. Stopping scraping attempts "
+                                                f"for this instrument.")
+                            failed_days = True
+                            raise RuntimeError
+                        except psycopg.Error:
+                            self._logger.exception(f"Database update: encountered a database exception when attempting "
+                                                   f"to insert weather data "
+                                                   f"(local date: {local_date.strftime("%Y-%m-%d")}; "
+                                                   f"weather station '{deployment['weather_station']}') "
+                                                   f"into the database for instrument '{instrument}':")
+                            failed_days = True
+                        except Exception:
+                            self._logger.exception(f"Database update: encountered an exception when attempting "
+                                                   f"to scrape sweather data "
+                                                   f"(local date: {local_date.strftime("%Y-%m-%d")}; "
+                                                   f"weather station '{deployment['weather_station']}') "
+                                                   f"for instrument '{instrument}':")
+                            failed_days = True
+
+                        # Waiting for at least one second between scrapes to avoid triggering rate limiting
+                        await asyncio.sleep(1)
+
+        except RuntimeError:
+            # This will be triggered if we encounter any page-formatting-related issues during scraping
+            pass
+        except Exception:
+            self._logger.exception(f"Database update: encountered an exception when scraping weather data for "
+                                   f"instrument '{instrument}':")
+            return f'Encountered an exception when scraping weather data for {instrument}. See log for details.\n'
+
+        if successful_days != 0:
+            if failed_days:
+                self._logger.info(f"Database update: successfully scraped {successful_days} day(s) of weather for "
+                                  f"instrument '{instrument}'. Scrape failed for some days.")
+                return (f"Successfully scraped {successful_days} day(s) of weather data for instrument '{instrument}'. "
+                        f'See log for details on failures.\n')
+            else:
+                self._logger.info(f"Database update: successfully scraped {successful_days} day(s) of weather for "
+                                  f"instrument '{instrument}'.")
+                return f"Successfully scraped {successful_days} day(s) of weather data for instrument '{instrument}'.\n"
+
+        else:
+            if failed_days:
+                self._logger.info(f"Database update: failed to scrape weather data for instrument '{instrument}'.")
+                return f"Failed to scrape weather data for instrument '{instrument}'. See log for details.\n"
+            else:
+                self._logger.info(f"Database update: no new weather data to scrape for instrument '{instrument}'.")
+                return ''
+
     async def _update_db(self) -> str:
         """A function that updates the database that backs the tgfserver application."""
         async with self._update_db_lock:
             self._logger.info('Updating database.')
             output_strings = []
             try:
-                async with (aiohttp.ClientSession() as session,
-                    await psycopg.AsyncConnection.connect(
-                        f'host={self._config.db_host} '
-                        f'port={self._config.db_port} '
-                        f'connect_timeout={self._config.db_connect_timeout_sec} '
-                        f'dbname={self._config.db_name} '
-                        f'user={self._config.db_user} '
-                        f'password={self._config.db_password}',
-                        autocommit=True) as conn):
+                async with await psycopg.AsyncConnection.connect(
+                    f'host={self._config.db_host} '
+                    f'port={self._config.db_port} '
+                    f'connect_timeout={self._config.db_connect_timeout_sec} '
+                    f'dbname={self._config.db_name} '
+                    f'user={self._config.db_user} '
+                    f'password={self._config.db_password}',
+                    autocommit=True) as conn:
 
                     # Setting database session timezone to UTC
                     await conn.execute("""SET TIMEZONE TO UTC;""")
 
-                    # Attempting to get, parse, and update from the general sheet
-                    output_strings.append(await self._update_from_sheet(
-                        session,
-                        conn,
-                        'General!A:B',
-                        {'Data Root': 'data_root', 'List Mode Formats': 'format_name'},
-                        sv.GeneralModel,
-                        {   'data_root': sql.SQL('CALL tgfserver.insert_into_general(%s);'),
-                            'format_name': sql.SQL('CALL tgfserver.insert_into_lm_formats(%s);')}))
+                    async with aiohttp.ClientSession() as session:
+                        # Attempting to get, parse, and update from the general sheet
+                        output_strings.append(await self._update_from_sheet(
+                            session,
+                            conn,
+                            'General!A:B',
+                            {'Data Root': 'data_root', 'List Mode Formats': 'format_name'},
+                            sv.GeneralModel,
+                            {   'data_root': sql.SQL('CALL tgfserver.insert_into_general(%s);'),
+                                'format_name': sql.SQL('CALL tgfserver.insert_into_lm_formats(%s);')}))
 
-                    # Attempting to get, parse, and update from the other sheets
-                    # Note that, because some of the database tables depend on one another, the execution order of these
-                    # is important
+                        # Attempting to get, parse, and update from the other sheets
+                        # Note that, because some of the database tables depend on one another, the execution order of
+                        # these is important
 
-                    # Instruments sheet
-                    output_strings.append(await self._update_from_sheet(
-                        session,
-                        conn,
-                        'Instruments!A:B',
-                        {'Name': 'instrument_name', 'Data Subdirectory': 'subdir'},
-                        sv.InstrumentsModel,
-                        sql.SQL("""CALL tgfserver.insert_into_instruments(%(instrument_name)s, %(subdir)s);""")))
+                        # Instruments sheet
+                        output_strings.append(await self._update_from_sheet(
+                            session,
+                            conn,
+                            'Instruments!A:B',
+                            {'Name': 'instrument_name', 'Data Subdirectory': 'subdir'},
+                            sv.InstrumentsModel,
+                            sql.SQL("""CALL tgfserver.insert_into_instruments(%(instrument_name)s, %(subdir)s);""")))
 
-                    # Scintillators sheet
-                    output_strings.append(await self._update_from_sheet(
-                        session,
-                        conn,
-                        'Scintillators!A:C',
-                        {   'Scintillator Name': 'scint_name', 'Scintillator Priority': 'scint_priority',
-                            'Plot Color': 'plot_color'},
-                        sv.ScintillatorsModel,
-                        sql.SQL("""CALL tgfserver.insert_into_scintillators(%(scint_name)s, %(scint_priority)s, 
-                                                                            %(plot_color)s);""")))
+                        # Scintillators sheet
+                        output_strings.append(await self._update_from_sheet(
+                            session,
+                            conn,
+                            'Scintillators!A:C',
+                            {   'Scintillator Name': 'scint_name', 'Scintillator Priority': 'scint_priority',
+                                'Plot Color': 'plot_color'},
+                            sv.ScintillatorsModel,
+                            sql.SQL("""CALL tgfserver.insert_into_scintillators(%(scint_name)s, %(scint_priority)s, 
+                                                                                %(plot_color)s);""")))
 
-                    # Configurations sheet
-                    output_strings.append(await self._update_from_sheet(
-                        session,
-                        conn,
-                        'Configurations!A:F',
-                        {   'Instrument': 'instrument_name', 'After Date': 'after_date', 'Scintillator': 'scint_name',
-                            'eRC': 'erc', 'List Mode Format': 'format_name', 'Long Event Search': 'long_event_search'},
-                        sv.ConfigurationsModel,
-                        sql.SQL("""CALL tgfserver.insert_into_configurations(%(instrument_name)s, %(after_date)s, 
-                                                                             %(scint_name)s, %(erc)s, %(format_name)s,
-                                                                             %(long_event_search)s);""")))
+                        # Configurations sheet
+                        output_strings.append(await self._update_from_sheet(
+                            session,
+                            conn,
+                            'Configurations!A:F',
+                            {   'Instrument': 'instrument_name', 'After Date': 'after_date',
+                                'Scintillator': 'scint_name', 'eRC': 'erc', 'List Mode Format': 'format_name',
+                                'Long Event Search': 'long_event_search'},
+                            sv.ConfigurationsModel,
+                            sql.SQL("""CALL tgfserver.insert_into_configurations(%(instrument_name)s, %(after_date)s, 
+                                                                                 %(scint_name)s, %(erc)s, 
+                                                                                 %(format_name)s, 
+                                                                                 %(long_event_search)s);""")))
 
-                    # Deployments sheet
-                    output_strings.append(await self._update_from_sheet(
-                        session,
-                        conn,
-                        'Deployments!A:K',
-                        {   'Location': 'location', 'Instrument': 'instrument_name', 'Start date': 'start_date',
-                            'End date': 'end_date', 'Timezone': 'tz_identifier',
-                            'Nearest weather station': 'weather_station',
-                            'Nearest sounding station': 'sounding_station',
-                            'Latitude (N)': 'latitude', 'Longitude (E, 0-360)': 'longitude',
-                            'Altitude (km)': 'altitude', 'Notes': 'notes'},
-                        sv.DeploymentsModel,
-                        sql.SQL("""CALL tgfserver.insert_into_deployments(%(instrument_name)s, %(start_date)s, 
-                                                                          %(end_date)s, %(location)s, %(tz_identifier)s,
-                                                                          %(weather_station)s, %(sounding_station)s,
-                                                                          %(latitude)s, %(longitude)s, %(altitude)s,
-                                                                          %(notes)s);""")))
+                        # Deployments sheet
+                        output_strings.append(await self._update_from_sheet(
+                            session,
+                            conn,
+                            'Deployments!A:K',
+                            {   'Location': 'location', 'Instrument': 'instrument_name', 'Start date': 'start_date',
+                                'End date': 'end_date', 'Timezone': 'tz_identifier',
+                                'Nearest weather station': 'weather_station',
+                                'Nearest sounding station': 'sounding_station',
+                                'Latitude (N)': 'latitude', 'Longitude (E, 0-360)': 'longitude',
+                                'Altitude (km)': 'altitude', 'Notes': 'notes'},
+                            sv.DeploymentsModel,
+                            sql.SQL("""CALL tgfserver.insert_into_deployments(%(instrument_name)s, %(start_date)s, 
+                                                                              %(end_date)s, %(location)s, 
+                                                                              %(tz_identifier)s, %(weather_station)s, 
+                                                                              %(sounding_station)s, %(latitude)s, 
+                                                                              %(longitude)s, %(altitude)s,
+                                                                              %(notes)s);""")))
+
+                    # Scraping weather for each instrument
+                    if self._config.scrape_weather:
+                        async with conn.cursor() as cur:
+                            await cur.execute("""SELECT * FROM tgfserver.get_instruments();""")
+                            instruments = [s[0] for s in await cur.fetchall()]
+
+                        async with async_playwright() as pw:
+                            browser = await pw.firefox.launch()
+                            context = await browser.new_context(user_agent='Mozilla/5.0 (Windows NT 11.0; Win64; x64)')
+                            page = await context.new_page()
+                            for instrument in instruments:
+                                output_strings.append(await self._update_weather(page, conn, instrument))
+
+                            await browser.close()
 
             except psycopg.Error as ex:
                 self._logger.exception('Database update: encountered the following database exception:')

@@ -601,7 +601,8 @@ class DispatcherService(ServiceBase):
             max_size=self._config.db_pool_size,
             check=psycopg_pool.AsyncConnectionPool.check_connection,
             reconnect_failed=self._pool_reconnect_failed_callback,
-            open=False)
+            open=False,
+            name=f'{self.service_name}_pg_pool')
         self._websockets = weakref.WeakSet()
         self._ip_cache = LockoutCache(self._config.ip_cache_size_bytes, self._config.ip_period_sec,
                                       self._config.max_auth_attempts)

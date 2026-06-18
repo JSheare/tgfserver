@@ -76,6 +76,8 @@ class ManagerModel(pydantic.BaseModel):
     spreadsheet_id: str
     sheets_api_key: str
     db_update_time: Annotated[Cron, pydantic.BeforeValidator(is_valid_cron)]
+    scrape_weather: bool
+    scrape_timeout_sec: pydantic.PositiveInt
 
     model_config = pydantic.ConfigDict(arbitrary_types_allowed=True)
 

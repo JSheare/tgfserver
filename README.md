@@ -49,6 +49,9 @@ The user config file can be found at ~/.config/tgfserver/tgfserver.ini
 - spreadsheet_id: the ID of the Google Sheet that the database will be partially updated from.
 - sheets_api_key: the API key used to access the Google Sheets API.
 - db_update_time: the time when the database will be updated. Should be a crontab-style string.
+- scrape_weather: a true or false value that toggles weather scraping during database updates.
+- scrape_timeout_sec: the amount of time (in seconds) to wait for weather data from the internet to load before giving
+  up.
 
 ### Instrument Dispatcher service options:
 - log_level: the log level of the application's instrument dispatcher service.
