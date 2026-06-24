@@ -534,7 +534,7 @@ class DispatcherSession:
     async def _callback(self, raw_payload: str) -> Tuple[int, Dict[str, Any], bool]:
         """A function implementing the schedule callback operation."""
         # Getting the instrument's scheduled transfer time from the scheduler
-        start_time, end_time = self._scheduler.get_time(self._session.instrument)
+        start_time, end_time = await self._scheduler.get_time(self._session.instrument)
         # Checking to see if the times are valid
         if start_time.timestamp() == 0:
             return IDStatusCode.NO_TIME_AVAILABLE, {'reason': 'all available time was booked'}, False
