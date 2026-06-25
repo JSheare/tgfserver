@@ -29,7 +29,7 @@ def default_startup(service: Type[ServiceBase], *args: Any, **kwargs: Any) -> No
         print(f"Encountered error when parsing config file: no section for service '{service.service_name}'.")
         return
     except Exception as ex:
-        print('Fatal exception encountered during startup.')
+        print(f"Fatal exception encountered during startup of service '{service.service_name}'.")
         print(f'{type(ex).__name__}: {ex}')
         return
 

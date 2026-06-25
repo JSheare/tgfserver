@@ -67,6 +67,7 @@ class ManagerModel(pydantic.BaseModel):
     start_limit_burst: pydantic.PositiveInt
     restart_sec: pydantic.PositiveFloat
     shutdown_timeout_sec: pydantic.PositiveFloat
+    do_db_update: bool
     db_host: Annotated[str, pydantic.AfterValidator(is_valid_ipv4)]
     db_port: Annotated[int, pydantic.AfterValidator(is_valid_port)]
     db_connect_timeout_sec: pydantic.PositiveInt

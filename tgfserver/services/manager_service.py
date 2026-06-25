@@ -392,7 +392,7 @@ class ManagerService(ServiceBase):
     async def _update_weather(self, page: playwright.async_api.Page, conn: psycopg.AsyncConnection,
                               instrument: str) -> str:
         """A function that scrapes missing weather info for the given instrument and stores it in the database."""
-        self._logger.info(f"Database update: scraping weather for instrument '{instrument}'.")
+        self._logger.debug(f"Database update: scraping weather for instrument '{instrument}'.")
         successful_days = 0
         failed_days = False
         retrieval_failure = False
@@ -541,26 +541,30 @@ class ManagerService(ServiceBase):
 
         if successful_days != 0:
             if failed_days:
-                self._logger.info(f"Database update: successfully scraped {successful_days} day(s) of weather for "
-                                  f"instrument '{instrument}'. Scrape failed for some days.")
+                self._logger.debug(f"Database update: successfully scraped {successful_days} day(s) of weather for "
+                                   f"instrument '{instrument}'. Scrape failed for some days.")
                 return (f"Successfully scraped {successful_days} day(s) of weather data for instrument '{instrument}'. "
                         f'See log for details on failures.\n')
             else:
-                self._logger.info(f"Database update: successfully scraped {successful_days} day(s) of weather for "
-                                  f"instrument '{instrument}'.")
+                self._logger.debug(f"Database update: successfully scraped {successful_days} day(s) of weather for "
+                                   f"instrument '{instrument}'.")
                 return f"Successfully scraped {successful_days} day(s) of weather data for instrument '{instrument}'.\n"
 
         else:
             if failed_days:
-                self._logger.info(f"Database update: failed to scrape weather data for instrument '{instrument}'.")
+                self._logger.debug(f"Database update: failed to scrape weather data for instrument '{instrument}'.")
                 return f"Failed to scrape weather data for instrument '{instrument}'. See log for details.\n"
             else:
-                self._logger.info(f"Database update: no new weather data to scrape for instrument '{instrument}'.")
+                self._logger.debug(f"Database update: no new weather data to scrape for instrument '{instrument}'.")
                 return ''
 
     async def _update_db(self) -> str:
         """A function that updates the database that backs the tgfserver application."""
         async with self._update_db_lock:
+            if not self._config.do_db_update:
+                self._logger.info('Skipping database update (disabled via config).')
+                return 'Database updating is currently disabled.\n'
+
             self._logger.info('Updating database.')
             output_strings = []
             try:

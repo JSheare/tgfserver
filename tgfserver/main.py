@@ -62,6 +62,11 @@ def send_commands(commands: List[str]) -> None:
                                   ", ".join(commands[:-1]) + ' and ' + commands[-1] + ' commands')}: '
                           f'application unresponsive.')
                     return
+                except ConnectionRefusedError:
+                    print(f'Unable to process '
+                          f'{commands[0] + ' command' if len(commands) == 1 else (
+                                  ", ".join(commands[:-1]) + ' and ' + commands[-1] + ' commands')}: '
+                          f'connection refused. Please try again later.')
 
                 sock.settimeout(None)
 
