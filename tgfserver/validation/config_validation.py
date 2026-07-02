@@ -122,3 +122,17 @@ class DispatcherModel(pydantic.BaseModel):
             raise ValueError('scheduler end time is greater than start time.')
 
         return self
+
+
+class APIModel(pydantic.BaseModel):
+    """A model for validating the API section of the config file."""
+    log_level: Annotated[int, pydantic.BeforeValidator(is_valid_log_level)]
+    service_host: Annotated[str, pydantic.AfterValidator(is_valid_ipv4)]
+    service_port: Annotated[int, pydantic.AfterValidator(is_valid_port)]
+    db_pool_size: pydantic.PositiveInt
+    db_host: Annotated[str, pydantic.AfterValidator(is_valid_ipv4)]
+    db_port: Annotated[int, pydantic.AfterValidator(is_valid_port)]
+    db_connect_timeout_sec: pydantic.PositiveInt
+    db_name: str
+    db_user: str
+    db_password: str

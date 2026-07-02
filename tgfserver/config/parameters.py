@@ -10,3 +10,4 @@ DATA_PATH = '~/.local/share/tgfserver'
 GMAIL_SCOPES = ['https://www.googleapis.com/auth/gmail.compose']
 MANAGER_NAME = 'manager_service'
 DISPATCHER_NAME = 'dispatcher_service'
+API_NAME = 'api_service'

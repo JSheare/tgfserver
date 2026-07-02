@@ -5,10 +5,11 @@ import pydantic
 import warnings
 from typing import Any, Type
 
+from tgfserver.services.api_service import APIService
 from tgfserver.services.service_base import ServiceBase
 
 
-def default_startup(service: Type[ServiceBase], *args: Any, **kwargs: Any) -> None:
+def default_startup(service: Type[ServiceBase] | Type[APIService], *args: Any, **kwargs: Any) -> None:
     """A function that performs the default service startup.
 
     Parameters

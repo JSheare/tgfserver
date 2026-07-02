@@ -10,6 +10,10 @@ The application is backed by a PostgreSQL database. Therefore, before running th
 Postgres is installed, that a database and the relevant roles have been set up, and that the migrations found in the 
 following GitHub repository have been applied: https://github.com/JSheare/tgf_database.
 
+The application also makes use of Playwright. Once the application is installed, please ensure that you are in the 
+install environment and run the following command to finish installing and setting up Playwright's browser bundles:
+playwright install.
+
 After installation, it's also recommended that the following commands be executed before starting the application:
 - This command will make the user config file and help in filling it out:
 
@@ -86,3 +90,15 @@ The user config file can be found at ~/.config/tgfserver/tgfserver.ini
 - gmail_address: the Gmail address used to send instrument check in digests.
 - gmail_api_credentials: the Gmail API credentials used to send emails.
 - digest_time: the time at which instrument check in digests will be generated. Should be a crontab-style string.
+
+### API service options:
+- log_level: the log level of the application's instrument dispatcher service.
+- service_host: the IPv4 address that the dispatcher service will bind to.
+- service_port: the TCP port that the dispatcher service will listen for websocket connections on.
+- db_pool_size: the number of connections in the dispatcher's database connection pool.
+- db_host: the IPv4 address of the database.
+- db_port: the port used by the database.
+- db_connect_timeout_sec: the amount of time (in seconds) to wait for database connections to be established.
+- db_name: the name of the backend database.
+- db_user: the name of the database role used by the dispatcher service.
+- db_password: the password of the database role used by the dispatcher service.

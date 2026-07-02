@@ -24,6 +24,7 @@ from tgfserver.validation.config_validation import ManagerModel
 from tgfserver.validation.weather_validation import WeatherModel
 from tgfserver.helpers.helper_funcs import expand_path
 from tgfserver.helpers.string_tcp import AsyncStringTCP
+from tgfserver.services.api_service import APIService
 from tgfserver.services.dispatcher_service import DispatcherService
 from tgfserver.services.service_base import ServiceBase
 from tgfserver.startup.startup_funcs import default_startup
@@ -63,6 +64,7 @@ class ManagerService(ServiceBase):
 
         self._register_primary_task(self._command_listener)
         self._register_primary_task(self._service_manager, default_startup, DispatcherService, update_user_config=False)
+        self._register_primary_task(self._service_manager, default_startup, APIService, update_user_config=False)
 
         self._register_periodic_task(self._update_db, cron=self._config.db_update_time)
 
