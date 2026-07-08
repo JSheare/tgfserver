@@ -185,17 +185,12 @@ class APIService:
             content={'detail': 'Encountered a database exception when attempting to fulfill request.'})
 
     async def _get_data_root(self) -> Dict[str, str]:
-        """A function that returns the root location for all TGF data on the main data computer.
+        """An endpoint that returns the root location for all TGF data on the main data computer.
 
         Returns
         -------
         Dict[str, str]
             A dictionary containing the data root. It is of the form {'data_root': root}.
-
-        Raises
-        -------
-        psycopg.Error
-            If a database error is encountered while fulfilling the request.
 
         """
 
@@ -208,17 +203,12 @@ class APIService:
                 return {'data_root': (await cur.fetchone())[0]}
 
     async def _get_instruments(self) -> List[str]:
-        """A function that returns a list of all known UCSC TGF group instruments.
+        """An endpoint that returns a list of all known UCSC TGF group instruments.
 
         Returns
         -------
         List[str]
-            A list of all known instrument names.
-
-        Raises
-        -------
-        psycopg.Error
-            If a database error is encountered while fulfilling the request.
+            An array of all known instrument names.
 
         """
 
@@ -232,18 +222,13 @@ class APIService:
                 return [s[0] for s in await cur.fetchall()]
 
     async def _get_scintillators(self) -> Dict[str, Dict[str, str | int]]:
-        """A function that returns a record of all known scintillators and their associated information.
+        """An endpoint that returns a record of all known scintillators and their associated information.
 
         Returns
         -------
         Dict[str, Dict[str, str | int]]
             A dictionary containing records for all known scintillators. Each entry is of the following form:
             {scint_name: {'scint_priority': x, 'plot_color': x}}.
-
-        Raises
-        -------
-        psycopg.Error
-            If a database error is encountered while fulfilling the request.
 
         """
 
@@ -270,7 +255,7 @@ class APIService:
         return structured_result
 
     async def _get_instrument_subdir(self, instrument: Annotated[str, Query(max_length=20)]) -> Dict[str, str]:
-        """A function that returns the data subdirectory for a particular instrument (within the data root) on the UCSC
+        """An endpoint that returns the data subdirectory for a particular instrument (within the data root) on the UCSC
         TGF group's main data computer.
 
         Parameters
@@ -282,11 +267,6 @@ class APIService:
         -------
         Dict[str, str]
             A dictionary containing the instrument's subdirectory. It is of the form {'subdir': subdir}.
-
-        Raises
-        -------
-        psycopg.Error
-            If a database error is encountered while fulfilling the request.
 
         """
 
@@ -315,7 +295,7 @@ class APIService:
     async def _get_instrument_config(self, instrument: Annotated[str, Query(max_length=20)],
                                      date: Annotated[str,
                                         Query(max_length=6)]) -> Dict[str, Dict[str, Dict[str, str | bool]]]:
-        """A function that returns the configuration information for the given instrument.
+        """An endpoint that returns the configuration information for the given instrument.
 
         Parameters
         ----------
@@ -331,11 +311,6 @@ class APIService:
             A dictionary containing instrument configurations after particular dates. Each entry has the following
             form: {after_date_1: {scint_name_1: {'erc': x, 'format_name': x, 'long_event_search': x},
             scint_name_2: ...}}.
-
-        Raises
-        -------
-        psycopg.Error
-            If a database error is encountered while fulfilling the request.
 
         """
         
@@ -403,7 +378,7 @@ class APIService:
 
     async def _get_instrument_deployment(self, instrument: Annotated[str, Query(max_length=20)],
                                          date: Annotated[str, Query(max_length=6)]) -> List[Dict[str, str | float]]:
-        """A function that returns deployment information for a particular instrument.
+        """An endpoint that returns deployment information for a particular instrument.
 
         Parameters
         ----------
@@ -416,14 +391,9 @@ class APIService:
         Returns
         -------
         List[Dict[str, str | float]]
-            A list containing matching deployments for the given instrument and date. Each deployment entry is of the
+            An array containing matching deployments for the given instrument and date. Each deployment entry is of the
             following form: {'start_date': YYMMDD, 'end_date': YYMMDD, 'location': x, 'tz_identifier': x,
             'weather_station': x, 'sounding_station': x, 'latitude': x, 'longitude': x, 'altitude': x, 'notes': x}.
-
-        Raises
-        -------
-        psycopg.Error
-            If a database error is encountered while fulfilling the request.
 
         """
         
@@ -478,7 +448,7 @@ class APIService:
 
     async def _get_weather(self, instrument: Annotated[str, Query(max_length=20)],
                            date: Annotated[str, Query(max_length=6)]) -> List[Dict[str, float | str]]:
-        """A function that returns weather information for the given instrument on the given date.
+        """An endpoint that returns weather information for the given instrument on the given date.
 
         Parameters
         ----------
@@ -490,13 +460,8 @@ class APIService:
         Returns
         -------
         List[Dict[str, float | str]]
-            A list of weather measurements. Each measurement has the following form: {'measurement_time': x_epoch,
+            An array of weather measurements. Each measurement has the following form: {'measurement_time': x_epoch,
             'condition': x}.
-
-        Raises
-        -------
-        psycopg.Error
-            If a database error is encountered while fulfilling the request.
 
         """
 
@@ -546,7 +511,8 @@ class APIService:
         self._add_signal_handlers()
 
         # Setting up the api server
-        app = FastAPI()
+        app = FastAPI(title='tgfserver API', description='An API that provides access to UCSC TGF group info.',
+                      version='1.0.0', redoc_url=None)
 
         router = APIRouter()
         router.lifespan_context = self._lifespan
