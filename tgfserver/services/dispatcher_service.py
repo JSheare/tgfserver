@@ -283,7 +283,7 @@ class TransferScheduler:
         if client_name in self._schedule:
             start_time, end_time = self._schedule[client_name]
             # If the scheduled time has already passed, treat it like a failed scheduling
-            if end_time > datetime.datetime.now(datetime.UTC):
+            if end_time <= datetime.datetime.now(datetime.UTC):
                 return invalid_time, invalid_time
             else:
                 return start_time, end_time
