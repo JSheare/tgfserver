@@ -349,9 +349,10 @@ class ManagerService(ServiceBase):
     def _parse_html_for_table(content: str) -> List[Dict[str, Any]]:
         """Parses the given HTML for a weather table and returns it as a list of dictionaries: one for each row."""
         soup = BeautifulSoup(content, 'lxml')
-        table_list = soup.find_all('table')
-        # Historical weather data pages have two tables. We're interested in the second one
-        table = table_list[1]
+        table = soup.select_one('.observation-table table')
+
+        if table is None:
+            raise ValueError('observations table missing.')
 
         # Maps webpage table column names to more programmer-friendly names
         column_map = {'Time': 'measurement_time', 'Temperature': 'temperature_f', 'Dew Point': 'dew_point_f',
@@ -375,7 +376,7 @@ class ManagerService(ServiceBase):
                         f'{weather_station}/date/{local_date.strftime("%Y-%m-%d")}',
                         wait_until='domcontentloaded')
         # Waiting for the javascript that fetches the tables to run
-        await page.wait_for_selector('table', timeout=self._config.scrape_timeout_sec * 1000)
+        await page.wait_for_selector('.observation-table table', timeout=self._config.scrape_timeout_sec * 1000)
 
         rows = await asyncio.to_thread(self._parse_html_for_table, await page.content())
         # Validating and coercing the rows and returning them
@@ -481,20 +482,13 @@ class ManagerService(ServiceBase):
                                                      f"weather website URL are incorrect. Stopping scraping attempts "
                                                      f"for this deployment.")
                                 break
-                        except IndexError:
+                        except (ValueError, KeyError) as ex:
                             self._logger.error(f"Database update: failed to scrape weather data "
                                                f"(local date: {local_date.strftime("%Y-%m-%d")}; "
                                                f"weather station '{deployment['weather_station']}') "
-                                               f"for instrument '{instrument}'. Measurements table missing. "
-                                               f"Stopping scraping attempts for this instrument.")
-                            failed_days = True
-                            raise RuntimeError
-                        except KeyError:
-                            self._logger.error(f"Database update: failed to scrape weather data "
-                                               f"(local date: {local_date.strftime("%Y-%m-%d")}; "
-                                               f"weather station '{deployment['weather_station']}') "
-                                               f"for instrument '{instrument}'. Measurements table contains unexpected "
-                                               f"columns. Stopping scraping attempts for this instrument.")
+                                               f"for instrument '{instrument}'. Measurements table is missing or "
+                                               f"contains unexpected columns. Stopping scraping attempts for this "
+                                               f"instrument. {ex}")
                             failed_days = True
                             raise RuntimeError
                         except pydantic.ValidationError as ex:
