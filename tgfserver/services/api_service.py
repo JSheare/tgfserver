@@ -189,8 +189,7 @@ class APIService:
 
         Returns
         -------
-        Dict[str, str]
-            A dictionary containing the data root. It is of the form {'data_root': root}.
+        A dictionary containing the data root. It is of the form {'data_root': root}.
 
         """
 
@@ -203,12 +202,11 @@ class APIService:
                 return {'data_root': (await cur.fetchone())[0]}
 
     async def _get_instruments(self) -> List[str]:
-        """An endpoint that returns a list of all known UCSC TGF group instruments.
+        """An endpoint that returns a list of all registered UCSC TGF group instruments.
 
         Returns
         -------
-        List[str]
-            An array of all known instrument names.
+        An array of all registered instrument names.
 
         """
 
@@ -222,13 +220,12 @@ class APIService:
                 return [s[0] for s in await cur.fetchall()]
 
     async def _get_scintillators(self) -> Dict[str, Dict[str, str | int]]:
-        """An endpoint that returns a record of all known scintillators and their associated information.
+        """An endpoint that returns a record of all registered scintillator types and their associated information.
 
         Returns
         -------
-        Dict[str, Dict[str, str | int]]
-            A dictionary containing records for all known scintillators. Each entry is of the following form:
-            {scint_name: {'scint_priority': x, 'plot_color': x}}.
+        A dictionary containing records for all registered scintillator types. Each entry is of the following form:
+        {scint_name: {'scint_priority': x, 'plot_color': x}}.
 
         """
 
@@ -260,13 +257,11 @@ class APIService:
 
         Parameters
         ----------
-        instrument : str
-            The name of the instrument to get the subdirectory for.
+        instrument: the name of the instrument to get the subdirectory for.
 
         Returns
         -------
-        Dict[str, str]
-            A dictionary containing the instrument's subdirectory. It is of the form {'subdir': subdir}.
+        A dictionary containing the instrument's subdirectory. It is of the form {'subdir': subdir}.
 
         """
 
@@ -299,18 +294,15 @@ class APIService:
 
         Parameters
         ----------
-        instrument : str
-            The name of the instrument to get configuration information for.
-        date : str
-            The date to get configuration information for. This should be of the form 'YYMMDD', or an asterisk to get
-            all configurations.
+        instrument: the name of the instrument to get configuration information for.
+
+        date: the date to get configuration information for. This should be of the form 'YYMMDD', or an asterisk to get
+        all configurations.
 
         Returns
         -------
-        Dict[str, Dict[str, Dict[str, str | bool]]]
-            A dictionary containing instrument configurations after particular dates. Each entry has the following
-            form: {after_date_1: {scint_name_1: {'erc': x, 'format_name': x, 'long_event_search': x},
-            scint_name_2: ...}}.
+        A dictionary containing instrument configurations after particular dates. Each entry has the following form:
+        {after_date_1: {scint_name_1: {'erc': x, 'format_name': x, 'long_event_search': x}, scint_name_2: ...}}.
 
         """
         
@@ -382,18 +374,16 @@ class APIService:
 
         Parameters
         ----------
-        instrument : str
-            The name of the instrument to get deployment information for.
-        date : str
-            The date to get deployment information for. This should be of the form 'YYMMDD', or an asterisk to get
-            all deployments.
+        instrument: the name of the instrument to get deployment information for.
+
+        date: the date to get deployment information for. This should be of the form 'YYMMDD', or an asterisk to get all
+        deployments.
 
         Returns
         -------
-        List[Dict[str, str | float]]
-            An array containing matching deployments for the given instrument and date. Each deployment entry is of the
-            following form: {'start_date': YYMMDD, 'end_date': YYMMDD, 'location': x, 'tz_identifier': x,
-            'weather_station': x, 'sounding_station': x, 'latitude': x, 'longitude': x, 'altitude': x, 'notes': x}.
+        An array containing matching deployments for the given instrument and date. Each deployment entry is of the
+        following form: {'start_date': YYMMDD, 'end_date': YYMMDD, 'location': x, 'tz_identifier': x,
+        'weather_station': x, 'sounding_station': x, 'latitude': x, 'longitude': x, 'altitude': x, 'notes': x}.
 
         """
         
@@ -452,16 +442,14 @@ class APIService:
 
         Parameters
         ----------
-        instrument : str
-            The name of the instrument to get weather information for.
-        date : str
-            The date to get weather information for. This should be of the form 'YYMMDD'.
+        instrument: the name of the instrument to get weather information for.
+
+        date: the date to get weather information for. This should be of the form 'YYMMDD'.
 
         Returns
         -------
-        List[Dict[str, float | str]]
-            An array of weather measurements. Each measurement has the following form: {'measurement_time': x_epoch,
-            'condition': x}.
+        An array of weather measurements. Each measurement has the following form: {'measurement_time': x_epoch,
+        'condition': x}.
 
         """
 
