@@ -500,7 +500,7 @@ class APIService:
 
         # Setting up the api server
         app = FastAPI(title='tgfserver API', description='An API that provides access to UCSC TGF group info.',
-                      version='1.0.0', redoc_url=None)
+                      version='1.0.0', docs_url=None, openapi_url=None, redoc_url=None)
 
         router = APIRouter()
         router.lifespan_context = self._lifespan
