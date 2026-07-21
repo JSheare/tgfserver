@@ -205,7 +205,8 @@ class TransferScheduler:
         now = datetime.datetime.now(datetime.UTC)
         valid_rates = []
         for i in range(len(measured_rates)):
-            if 0 <= (now - timestamps[i]).total_seconds() < self._config.stale_stats_thresh and measured_rates[i] > 0:
+            if (0 <= (now - timestamps[i]).total_seconds() < self._config.stale_stats_thresh_sec and
+                    measured_rates[i] > 0):
                 valid_rates.append(measured_rates[i])
 
         # Returning an invalid rate if all the measurements are too old
