@@ -213,9 +213,12 @@ class TransferScheduler:
         if len(valid_rates) == 0:
             return -1.0
 
-        mean = statistics.mean(valid_rates)
-        standard_dev = statistics.stdev(valid_rates)
-        return mean + standard_dev
+        if len(valid_rates) > 1:
+            mean = statistics.mean(valid_rates)
+            standard_dev = statistics.stdev(valid_rates)
+            return mean + standard_dev
+
+        return valid_rates[0]
 
     async def register(self, client_name: str, total_bytes: int, transfer_rate: float,
                        last_transfer: datetime.datetime) -> Tuple[bool, str]:
