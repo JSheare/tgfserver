@@ -11,6 +11,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import APIRouter, FastAPI, Query
 from fastapi.responses import JSONResponse
+from importlib.metadata import version, PackageNotFoundError
 from psycopg.rows import dict_row
 from typing import Any, Annotated, AsyncGenerator, Dict, List
 
@@ -494,7 +495,17 @@ class APIService:
         log_listener = configure_logging(self.service_name, self._config.log_level)
         log_listener.start()
 
-        self._logger.info('Starting up service.')
+        app_version = None
+        try:
+            app_version = version(params.APPLICATION_NAME)
+        except PackageNotFoundError:
+            pass
+
+        if app_version is not None:
+            self._logger.info(f'({params.APPLICATION_NAME} v{version(params.APPLICATION_NAME)}) '
+                              f'Starting up service.')
+        else:
+            self._logger.info('Starting up service.')
 
         self._add_signal_handlers()
 

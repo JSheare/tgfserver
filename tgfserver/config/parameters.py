@@ -1,4 +1,5 @@
 """A module containing the parameters used by various parts of the tgfserver application."""
+APPLICATION_NAME = 'tgfserver'
 USER_CONFIG_PATH = '~/.config/tgfserver'
 CONFIG_FILE = 'tgfserver.ini'
 LOG_PATH = '~/.local/state/tgfserver/log'
