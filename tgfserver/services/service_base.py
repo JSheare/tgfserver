@@ -8,8 +8,10 @@ import signal
 from abc import ABC
 from abc import abstractmethod
 from cron_converter import Cron
+from importlib.metadata import version, PackageNotFoundError
 from typing import Any, Callable, Set
 
+import tgfserver.config.parameters as params
 from tgfserver.startup.config_funcs import read_config
 from tgfserver.startup.configure_logging import configure_logging
 
@@ -344,7 +346,16 @@ class ServiceBase(ABC):
         interval_executors = set()
         cron_executors = set()
         try:
-            self._logger.info('Starting up service.')
+            app_version = None
+            try:
+                app_version = version(params.APPLICATION_NAME)
+            except PackageNotFoundError:
+                pass
+
+            if app_version is not None:
+                self._logger.info(f'({params.APPLICATION_NAME} v{app_version}) Starting up service.')
+            else:
+                self._logger.info('Starting up service.')
 
             self.__add_signal_handlers()
 
