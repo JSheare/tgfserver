@@ -216,7 +216,8 @@ class TransferScheduler:
         if len(valid_rates) > 1:
             mean = statistics.mean(valid_rates)
             standard_dev = statistics.stdev(valid_rates)
-            return mean + standard_dev
+            # One standard deviation tends to undershoot, so we're using two
+            return mean + 2 * standard_dev
 
         return valid_rates[0]
 
