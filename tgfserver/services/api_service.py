@@ -269,7 +269,7 @@ class APIService:
         self._logger.debug('Servicing _get_instrument_subdir request.')
         # Making sure that instrument is in a valid format
         if not instrument.isalnum():
-            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_422_UNPROCESSABLE_CONTENT,
                                         detail='Invalid instrument. Instrument must consist of only alphanumeric '
                                                'characters.')
 
@@ -284,7 +284,7 @@ class APIService:
                 result = await cur.fetchone()
 
         if len(result) == 0 or result[0] is None:
-            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_400_BAD_REQUEST, detail='Unknown instrument.')
+            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_404_NOT_FOUND, detail='Unknown instrument.')
 
         return {'subdir': result[0]}
 
@@ -310,7 +310,7 @@ class APIService:
         self._logger.debug('Servicing _get_instrument_config request.')
         # Making sure that instrument is in a valid format
         if not instrument.isalnum():
-            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_422_UNPROCESSABLE_CONTENT,
                                         detail='Invalid instrument. Instrument must consist of only alphanumeric '
                                                'characters.')
 
@@ -323,7 +323,7 @@ class APIService:
             try:
                 full_date = datetime.datetime.strptime(date, '%y%m%d').replace(tzinfo=datetime.UTC)
             except Exception:
-                raise fastapi.HTTPException(status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+                raise fastapi.HTTPException(status_code=fastapi.status.HTTP_422_UNPROCESSABLE_CONTENT,
                                             detail="Invalid date. Date must be of the form 'YYMMDD'.")
 
         # Getting the config(s) from the database
@@ -391,7 +391,7 @@ class APIService:
         self._logger.debug('Servicing _get_instrument_deployment request.')
         # Making sure that instrument is in a valid format
         if not instrument.isalnum():
-            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_422_UNPROCESSABLE_CONTENT,
                                         detail='Invalid instrument. Instrument must consist of only alphanumeric '
                                                'characters.')
 
@@ -404,7 +404,7 @@ class APIService:
             try:
                 full_date = datetime.datetime.strptime(date, '%y%m%d').replace(tzinfo=datetime.UTC)
             except Exception:
-                raise fastapi.HTTPException(status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+                raise fastapi.HTTPException(status_code=fastapi.status.HTTP_422_UNPROCESSABLE_CONTENT,
                                             detail="Invalid date. Date must be of the form 'YYMMDD'.")
 
         # Getting the deployment(s) from the database
@@ -457,7 +457,7 @@ class APIService:
         self._logger.debug('Servicing _get_weather request.')
         # Making sure that instrument is in a valid format
         if not instrument.isalnum():
-            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_422_UNPROCESSABLE_CONTENT,
                                         detail='Invalid instrument. Instrument must consist of only alphanumeric '
                                                'characters.')
 
@@ -467,7 +467,7 @@ class APIService:
         try:
             full_date = datetime.datetime.strptime(date, '%y%m%d').replace(tzinfo=datetime.UTC)
         except Exception:
-            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_400_BAD_REQUEST,
+            raise fastapi.HTTPException(status_code=fastapi.status.HTTP_422_UNPROCESSABLE_CONTENT,
                                         detail="Invalid date. Date must be of the form 'YYMMDD'.")
 
         # Getting weather data from the database
