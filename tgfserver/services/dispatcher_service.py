@@ -217,7 +217,7 @@ class TransferScheduler:
             mean = statistics.mean(valid_rates)
             standard_dev = statistics.stdev(valid_rates)
             standard_err = standard_dev/math.sqrt(len(valid_rates))
-            return mean + standard_err + (2 * standard_dev)
+            return mean + (2 * standard_err) + (2 * standard_dev)
 
         return valid_rates[0]
 
