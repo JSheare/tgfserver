@@ -90,7 +90,7 @@ The user config file can be found at ~/.config/tgfserver/tgfserver.ini
 - storage_warning_thresh: the instrument computer storage usage fraction at or above which usage is considered high.
 - gmail_address: the Gmail address used to send instrument check in digests.
 - gmail_api_credentials: the Gmail API credentials used to send emails.
-- digest_time: the time at which instrument check in digests will be generated. Should be a crontab-style string.
+- digest_time: the time at which instrument check in digests will be generated. Should be a crontab-style string. 
 
 ### API service options:
 - log_level: the log level of the application's API service.
