@@ -25,6 +25,13 @@ class CheckInModel(pydantic.BaseModel):
 
 class NegotiationModel(pydantic.BaseModel):
     """A model for validating message payloads during a file transfer negotiation operation."""
-    measured_rates: Annotated[List[pydantic.PositiveFloat], Len(max_length=20)]
-    timestamps: Annotated[List[datetime.datetime], Len(max_length=20)]
+    measured_rates: Annotated[List[pydantic.PositiveFloat], Len(max_length=50)]
+    timestamps: Annotated[List[datetime.datetime], Len(max_length=50)]
     total_bytes: pydantic.PositiveInt
+
+    @pydantic.model_validator(mode='after')
+    def check_lens(self):
+        if len(self.measured_rates) != len(self.timestamps):
+            raise ValueError('the number of measured rates must match the number of timestamps.')
+
+        return self

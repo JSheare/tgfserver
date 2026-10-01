@@ -194,7 +194,7 @@ class TransferScheduler:
         Returns
         -------
         float
-            The transfer rate. -1.0 is returned if there are no measurements, or if the measurements are too old.
+            The transfer rate. -1.0 is returned if there are no measurements, or if the measurements are stale.
 
         """
 
@@ -202,22 +202,31 @@ class TransferScheduler:
         if len(measured_rates) == 0:
             return -1.0
 
-        now = datetime.datetime.now(datetime.UTC)
+        # The following code assumes that timestamps[i] is the timestamp for measured_rates[i], and that timestamps are
+        # in ascending order
         valid_rates = []
-        for i in range(len(measured_rates)):
-            if (0 <= (now - timestamps[i]).total_seconds() < self._config.stale_stats_thresh_sec and
-                    measured_rates[i] > 0):
+        prev = datetime.datetime.now(datetime.UTC)
+        for i in range(len(measured_rates) - 1, -1, -1):
+            if 0 <= (prev - timestamps[i]).total_seconds() < self._config.long_measurement_gap_thresh_sec:
                 valid_rates.append(measured_rates[i])
+                prev = timestamps[i]
+            else:
+                break
 
-        # Returning an invalid rate if all the measurements are too old
+        # Returning an invalid rate if all the measurements are from before a long gap (could indicate a network change)
         if len(valid_rates) == 0:
             return -1.0
 
         if len(valid_rates) > 1:
+            n = len(valid_rates)
             mean = statistics.mean(valid_rates)
             standard_dev = statistics.stdev(valid_rates)
-            standard_err = standard_dev/math.sqrt(len(valid_rates))
-            return mean + (2 * standard_err) + (2 * standard_dev)
+            # Sample stdev will always underestimate population stdev (particularly for small samples), so we use this
+            # bias correction function C_4 to correct it
+            bias_correction = (math.sqrt(2 / (n - 1)) * math.gamma(n / 2) / math.gamma((n - 1) / 2))
+            # Via the empirical rule, two standard deviations will cover ~95% of the values in the distribution, so this
+            # will return something close to the worst possible rate based on the measurements
+            return mean - 2 * (standard_dev / bias_correction)
 
         return valid_rates[0]
 

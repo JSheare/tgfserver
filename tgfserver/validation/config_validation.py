@@ -106,7 +106,7 @@ class DispatcherModel(pydantic.BaseModel):
     end_time_sec: Annotated[int, pydantic.AfterValidator(is_valid_day_sec)]
     max_slot_size_sec: pydantic.PositiveInt
     gap_size_sec: pydantic.PositiveInt
-    stale_stats_thresh_sec: pydantic.PositiveInt
+    long_measurement_gap_thresh_sec: pydantic.PositiveInt
     scheduling_deadline: Annotated[Cron, pydantic.BeforeValidator(is_valid_cron)]
     stale_check_in_thresh_sec: pydantic.PositiveInt
     storage_warning_thresh: pydantic.PositiveFloat
