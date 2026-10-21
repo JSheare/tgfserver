@@ -14,7 +14,7 @@ def default_startup(service: Type[ServiceBase] | Type[APIService], *args: Any, *
 
     Parameters
     ----------
-    service: ServiceBase child class types
+    service: ServiceBase or subclasses
         The class of the service to start.
 
     """

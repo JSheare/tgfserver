@@ -30,7 +30,7 @@ class APIService:
         ----------
         service_name : str
             The name of the service.
-        _config : pydantic.BaseModel subclasses
+        _config : APIModel
             A pydantic model containing the service's config options.
         _logger : logging.Logger
             The service's logger.

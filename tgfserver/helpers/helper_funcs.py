@@ -89,7 +89,7 @@ def read_json_file(file: str) -> Dict[Any, Any]:
 
     Returns
     -------
-    Dict[Any, Any]
+    dict of {any, any}
         The json file's contents as a dictionary.
 
     """
@@ -105,7 +105,7 @@ def write_json_file(dictionary: Dict[Any, Any], file: str) -> None:
 
         Parameters
         ----------
-        dictionary : Dict[Any, Any]
+        dictionary : dict of {any, any}
             The dictionary to be written.
 
         file : str
@@ -127,7 +127,7 @@ def read_pickle_file(file: str) -> Any:
 
     Returns
     -------
-    Any
+    any
         The unpickled object.
 
     """
@@ -143,7 +143,7 @@ def write_pickle_file(obj: Any, file: str) -> None:
 
     Parameters
     ----------
-    obj : Any
+    obj : any
         The object to be pickled and written to a file.
     file : str
         The file where the pickled object will be written.

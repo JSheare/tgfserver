@@ -22,19 +22,19 @@ class ServiceBase(ABC):
 
     Attributes
     ----------
-    _config : pydantic.BaseModel subclasses
+    _config : pydantic.BaseModel or subclasses
         A pydantic model containing the service's config options.
     _logger : logging.Logger
         The service's logger.
-    __registered_resource_managers : List[coroutine function]
+    __registered_resource_managers : list of callable
         A list of registered resource coroutine functions.
-    __registered_primary_tasks : List[Tuple[coroutine function, list[Any], Dict[str, Any]]]
+    __registered_primary_tasks : list[tuple[callable, list of any, dict of {str, any}]]
         A list of registered primary task coroutine functions and any args and keyword args that should be passed
         to them.
-    __registered_interval_tasks : List[Tuple[coroutine function, float, bool]]
+    __registered_interval_tasks : list[tuple[callable, float, bool]]
         A list of registered interval task coroutine functions, the intervals to execute them at, and whether execution
         should be started immediately on service startup.
-    __registered_cron_tasks : List[Tuple[coroutine function, cron_converter.Cron]]
+    __registered_cron_tasks : list[tuple[callable, cron_converter.Cron]]
         A list of registered cron task coroutine functions and the Cron object for determining their execution
         schedules.
     __shutdown : asyncio.Event
@@ -177,7 +177,7 @@ class ServiceBase(ABC):
 
         Parameters
         ----------
-        coro_func : coroutine function
+        coro_func : callable
             The coroutine function to be registered as a resource manager. Should create an async generator when called.
 
         Raises
@@ -201,7 +201,7 @@ class ServiceBase(ABC):
 
         Parameters
         ----------
-        coro_func : coroutine function
+        coro_func : callable
             The coroutine function to be registered as a primary task.
 
         Raises
@@ -226,13 +226,13 @@ class ServiceBase(ABC):
 
         Parameters
         ----------
-        coro_func : coroutine function
+        coro_func : callable
             The coroutine function to be registered as a periodic task.
-        cron : cron_converter.Cron | None, optional
+        cron : cron_converter.Cron or None, optional
             A Cron object that will be used to determine the task's execution schedule.
-        interval: float | None, optional
+        interval : float or None, optional
             The interval in seconds that the task will be executed at.
-        start_immediately: bool, optional
+        start_immediately : bool, optional
             Only pertains to interval tasks. Whether the interval task should be executed immediately on service
             startup. False by default.
 

@@ -42,7 +42,7 @@ class ManagerService(ServiceBase):
         The name of the service.
     _config_model : ManagerModel
         A pydantic model used to validate the service's section of the config file.
-    _services : Dict[str, weakref.ref]
+    _services : dict of {str, weakref.ref}
         A dictionary containing weak references to each service's AsyncProcess.
     _update_db_lock : asyncio.Lock
         A lock that ensures only one database update job can run at once.
@@ -173,7 +173,7 @@ class ManagerService(ServiceBase):
 
         Parameters
         ----------
-        startup_func : function
+        startup_func : callable
             The startup function to use for starting the service.
         service : tgfserver.services.service_base.ServiceBase and subclasses
             The managed service's class.
@@ -235,11 +235,11 @@ class ManagerService(ServiceBase):
             A database connection for executing SQL queries.
         sheet_range : str
             A string containing the sheet name and column range to update from in the following format: sheet!x:x.
-        sheet_to_db : Dict[str, str]
+        sheet_to_db : dict of {str, str}
             A dictionary that maps sheet columns to database columns.
         model_class : pydantic.BaseModel subclasses
             A pydantic model that validates input from the sheet.
-        query: sql.SQL | Dict[str, sql.SQL]
+        query: sql.SQL | dict of {str, sql.SQL}
             An SQL query or dict mapping columns to SQL queries that updates the relevant database columns and tables.
 
         """

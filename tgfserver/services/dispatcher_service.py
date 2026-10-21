@@ -86,9 +86,9 @@ class TransferScheduler:
 
     Attributes
     ----------
-    _day_map : Dict[int, bool]
+    _day_map : dict of {int, bool}
         A dictionary mapping days of the week to whether they're valid for scheduling
-    _waitlist : Dict[str, ClientInfo]
+    _waitlist : dict of {str, ClientInfo}
         A dictionary containing info of clients waitlisted for scheduling.
     _waitlist_lock : asyncio.Lock
         A lock used to prevent race conditions when writing the waitlist to a file.
@@ -96,7 +96,7 @@ class TransferScheduler:
         A counter for the number of waitlist file writing jobs that are pending.
     _waitlist_available : asyncio.Event
         An event signaling that waitlist registration is open.
-    _schedule : Dict[str, Tuple[datetime.datetime]]
+    _schedule : dict of {str, tuple of datetime.datetime}
         A dictionary containing the start and end timestamps for each scheduled client's transfer time slot.
     _schedule_available : asyncio.Event
         An event signaling that the schedule is available.
@@ -186,9 +186,9 @@ class TransferScheduler:
 
         Parameters
         ----------
-        measured_rates : List[float]
+        measured_rates : list of float
             The client's transfer rate measurements.
-        timestamps : List[datetime.datetime]
+        timestamps : list of datetime.datetime
             The timestamps for each measured rate
 
         Returns
@@ -247,8 +247,8 @@ class TransferScheduler:
 
         Returns
         -------
-            Tuple[bool, str]
-                A bool indicating whether the registration was successful, and a string indicating the reason.
+        tuple[bool, str]
+            A bool indicating whether the registration was successful, and a string indicating the reason.
 
         """
 
@@ -286,9 +286,9 @@ class TransferScheduler:
 
         Returns
         -------
-            Tuple[datetime.datetime, datetime.datetime]
-                The start and end timestamps of the time slot. If no slot exists, both timestamps will be the Unix
-                epoch.
+        tuple[datetime.datetime, datetime.datetime]
+            The start and end timestamps of the time slot. If no slot exists, both timestamps will be the Unix
+            epoch.
 
         """
 
@@ -358,17 +358,17 @@ class DispatcherSession:
 
     Parameters
     ----------
-    config: DispatcherModel
+    config : DispatcherModel
         The instrument dispatcher service's config.
-    logger: logging.Logger
+    logger : logging.Logger
         The instrument dispatcher service's logger.
-    pool: psycopg_pool.AsyncConnectionPool
+    pool : psycopg_pool.AsyncConnectionPool
         The instrument dispatcher service's database connection pool.
-    ph: argon2.PasswordHasher
+    ph : argon2.PasswordHasher
         The instrument dispatcher service's password hasher.
-    scheduler: tgfserver.helpers.transfer_scheduler.TransferScheduler
+    scheduler : tgfserver.helpers.transfer_scheduler.TransferScheduler
         The instrument dispatcher service's transfer scheduler.
-    client_addr: str
+    client_addr : str
         The ip address of the client.
 
     Attributes
@@ -404,7 +404,7 @@ class DispatcherSession:
 
         Returns
         -------
-        Tuple[str, bool]
+        tuple[str, bool]
             The appropriate raw response, and a bool indicating whether the exchange is over.
 
         Raises
