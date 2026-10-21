@@ -756,8 +756,8 @@ class DispatcherService(ServiceBase):
     def _send_email(creds: Credentials, message: EmailMessage) -> None:
         """A function that sends the given email message using the given credentials."""
         encoded_message = {'raw': base64.urlsafe_b64encode(message.as_bytes()).decode()}
-        service = build('gmail', 'v1', credentials=creds)
-        service.users().messages().send(userId='me', body=encoded_message).execute()
+        with build('gmail', 'v1', credentials=creds) as service:
+            service.users().messages().send(userId='me', body=encoded_message).execute()
 
     async def _make_check_in_digest(self) -> None:
         """A function that makes and sends the service's check in digests."""
