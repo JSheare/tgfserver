@@ -4,7 +4,8 @@ import os
 import psutil
 import socket
 import sys
-from typing import List
+from contextlib import contextmanager
+from typing import Any, Generator, List
 
 # Adds parent directory to sys.path. Necessary to make the imports below work when running this file as a script
 if __name__ == '__main__':
@@ -31,6 +32,22 @@ def running_pid() -> int:
         return -1
     except (OSError, FileNotFoundError, ValueError):
         return -1
+
+@contextmanager
+def pid_manager() -> Generator[None, Any, None]:
+    """A generator responsible for creating and deleting the application's pid file."""
+    # Making the file
+    directory = expand_path(params.RUNTIME_PATH)
+    with open(f'{directory}/{params.PID_FILE}', 'w') as file:
+        file.write(str(os.getpid()))
+
+    yield
+
+    # Deleting the file
+    try:
+        os.remove(f'{directory}/{params.PID_FILE}')
+    except Exception:
+        pass
 
 
 def send_commands(commands: List[str]) -> None:
@@ -116,12 +133,12 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog='tgfserver',
                                      description='A linux backend application for the operations of the UCSC TGF group')
     parser.add_argument('--setup', help='run the tgfserver user setup', action='store_true')
-    parser.add_argument('--test_config', help='test that the config file contains valid options',
+    parser.add_argument('--test-config', help='test that the config file contains valid options',
                         action='store_true')
     parser.add_argument('--status', help='display the current status of the tgfserver application', action='store_true')
     parser.add_argument('--instruments', help='report the most recent check in info for each instrument',
                         action='store_true')
-    parser.add_argument('--update_db', help='update the backend database from the TGF Group Info spreadsheet',
+    parser.add_argument('--update-db', help='update the backend database from the TGF Group Info spreadsheet',
                         action='store_true')
     parser.add_argument('--reload', help='reload the current tgfserver application instance', action='store_true')
     args = parser.parse_args()
@@ -143,7 +160,7 @@ def main() -> None:
 
     if args.update_db:
         has_args = True
-        commands.append('--update_db')
+        commands.append('--update-db')
 
     if args.reload:
         has_args = True
@@ -153,7 +170,8 @@ def main() -> None:
         send_commands(commands)
 
     if not has_args and running_pid() == -1:
-        default_startup(ManagerService)
+        with pid_manager():
+            default_startup(ManagerService)
 
 
 if __name__ == '__main__':

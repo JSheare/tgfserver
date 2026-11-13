@@ -15,14 +15,13 @@ import zoneinfo
 from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright
 from psycopg.rows import dict_row
-from typing import Any, AsyncGenerator, Callable, Dict, List, Set, Type
+from typing import Any, Callable, Dict, List, Set, Type
 
 import tgfserver.config.parameters as params
 import tgfserver.validation.sheets_validation as sv
 from tgfserver.helpers.async_process import AsyncProcess
 from tgfserver.validation.config_validation import ManagerModel
 from tgfserver.validation.weather_validation import WeatherModel
-from tgfserver.helpers.helper_funcs import expand_path
 from tgfserver.helpers.string_tcp import AsyncStringTCP
 from tgfserver.services.api_service import APIService
 from tgfserver.services.dispatcher_service import DispatcherService
@@ -60,8 +59,6 @@ class ManagerService(ServiceBase):
         self._services = dict()
         self._update_db_lock = asyncio.Lock()
 
-        self._register_resource_manager(self._pid_file)
-
         self._register_primary_task(self._command_listener)
         self._register_primary_task(self._service_manager, default_startup, DispatcherService, update_user_config=False)
         self._register_primary_task(self._service_manager, default_startup, APIService, update_user_config=False)
@@ -77,22 +74,6 @@ class ManagerService(ServiceBase):
         restart_required = {'db_update_time'}
         if len(diff.intersection(restart_required)) > 0:
             self._logger.warning('Service restart required for some updated config options to take effect.')
-
-    @staticmethod
-    async def _pid_file() ->AsyncGenerator[None, Any]:
-        """A function responsible for creating and deleting the application's pid file."""
-        # Making the file
-        runtime_path = expand_path(params.RUNTIME_PATH)
-        with open(f'{runtime_path}/{params.PID_FILE}', 'w') as file:
-            file.write(str(os.getpid()))
-
-        yield
-
-        # Deleting the file
-        try:
-            os.remove(f'{runtime_path}/{params.PID_FILE}')
-        except Exception:
-            pass
 
     async def _process_commands(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """A callback that processes commands sent through the service's localhost listener."""
@@ -115,8 +96,8 @@ class ManagerService(ServiceBase):
                                 await protocol.send_message(writer, f'{service} - {status}')
 
                             self._logger.debug("Command '--status' executed successfully.")
-                        case '--update_db':
-                            self._logger.debug("Received command '--update_db'.")
+                        case '--update-db':
+                            self._logger.debug("Received command '--update-db'.")
                             if self._update_db_lock.locked():
                                 await protocol.send_message(writer, 'Database update already in progress.')
                             else:
@@ -124,7 +105,7 @@ class ManagerService(ServiceBase):
                                 output = await self._update_db()
                                 await protocol.send_message(writer, output)
 
-                            self._logger.debug("Command '--update_db' executed successfully.")
+                            self._logger.debug("Command '--update-db' executed successfully.")
                         case '--reload':
                             self._logger.debug("Received command '--reload'.")
                             await protocol.send_message(writer, 'Reloading application.')

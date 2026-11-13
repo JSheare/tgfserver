@@ -24,7 +24,7 @@ def default_startup(service: Type[ServiceBase] | Type[APIService], *args: Any, *
         service_instance = service(*args, **kwargs)
     except pydantic.ValidationError:
         print(f"Encountered error(s) when validating config file for service '{service.service_name}'. Use the "
-              f"--test_config flag for details.")
+              f"--test-config flag for details.")
         return
     except configparser.NoSectionError:
         print(f"Encountered error when parsing config file: no section for service '{service.service_name}'.")

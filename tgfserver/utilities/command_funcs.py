@@ -47,21 +47,18 @@ def validate_service_config(config: configparser.ConfigParser, service_name: str
     try:
         config_model(**dict(config.items(service_name)))
         print(f"Options for service '{service_name}' validated successfully.")
-    except pydantic.ValidationError as ex:
-        print(f"Encountered error(s) when validating config file for service '{service_name}':")
-        missing_fields = 0
-        for error in ex.errors():
-            if error['type'] == '':
-                missing_fields += 1
-            else:
-                print(f"Invalid input '{error['input']}'. {error['msg']}")
-
-        if missing_fields > 0:
-            print(f'{missing_fields} missing fields.')
-
-        return
     except configparser.NoSectionError:
         print(f"Encountered error when parsing config file: no section for service '{service_name}'.")
+        return
+    except pydantic.ValidationError as ex:
+        print(f"Encountered error(s) when validating config file for service '{service_name}':")
+        for error in ex.errors():
+            loc = '.'.join([s for s in error['loc'] if isinstance(s, str)])
+            if error['type'] == 'missing':
+                print(f"Missing required field: {loc}.")
+            else:
+                print(f"Invalid input '{error['input']}' at {loc}. {error['msg']}")
+
         return
 
 
@@ -71,3 +68,4 @@ def validate_config() -> None:
     config = read_config()
     validate_service_config(config, params.MANAGER_NAME, v.ManagerModel)
     validate_service_config(config, params.DISPATCHER_NAME, v.DispatcherModel)
+    validate_service_config(config, params.API_NAME, v.APIModel)

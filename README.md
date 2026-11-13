@@ -22,7 +22,7 @@ After installation, it's also recommended that the following commands be execute
 
 - And this command will validate the config file and report any issues. Run it after filling the file out:
 
-        tgfserver --test_config
+        tgfserver --test-config
 
 For a full list of application commands, use the help flag:
 
